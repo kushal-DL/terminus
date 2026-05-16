@@ -202,13 +202,16 @@ class BuildScreen(Screen):
             if event.button.id == "btn-build":
                 result = await client.submit_action("build", {"building_type": building_id})
                 status.update(f"✓ {result.get('status', 'OK')}")
+                self.app.notify_toast(f"✓ Started building {building_id}", "success")
             elif event.button.id == "btn-upgrade":
                 result = await client.submit_action("upgrade", {"building_type": building_id})
                 status.update(f"✓ {result.get('status', 'OK')}")
+                self.app.notify_toast(f"✓ Upgrading {building_id}", "success")
             # Refresh state after action
             await self.on_mount()
         except Exception as e:
             status.update(f"✗ {e}")
+            self.app.notify_toast(str(e), "error")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

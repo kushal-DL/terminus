@@ -83,10 +83,12 @@ class WorkersScreen(Screen):
             try:
                 await client.submit_action("allocate_workers", {"allocation": allocation})
                 status.update("✓ Workers reallocated!")
+                self.app.notify_toast("✓ Workers reallocated!", "success")
                 await asyncio.sleep(1)
                 self.app.pop_screen()
             except Exception as e:
                 status.update(f"✗ {e}")
+                self.app.notify_toast(str(e), "error")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()

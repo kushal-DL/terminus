@@ -27,7 +27,7 @@
 | 1 | Foundation & Infrastructure | 16 | 16 | 0 | 0 |
 | 2 | Game Engine | 48 | **48** | 0 | 0 |
 | 3 | Server API & Networking | 28 | **28** | 0 | 0 |
-| 4 | TUI Client (Screens) | 47 | **47** | 0 | 0 |
+| 4 | TUI Client (Screens) | 52 | **52** | 0 | 0 |
 | 5 | Game Balance | 12 | **12** | 0 | 0 |
 | 6 | Persistence & Reliability | 9 | **9** | 0 | 0 |
 | 7 | Visual Identity & Retro Overhaul | 67 | 58 | 0 | 9 |
@@ -35,7 +35,7 @@
 | 9 | Packaging & Distribution | 9 | **9** | 0 | 0 |
 | 10 | Stretch Goals | 10 | 0 | 0 | 10 |
 | 11 | Developer Tools | 8 | **8** | 0 | 0 |
-| | **TOTAL** | **268** | **243** | **0** | **25** |
+| | **TOTAL** | **273** | **248** | **0** | **25** |
 
 ---
 
@@ -296,6 +296,16 @@
 | ✅ | 4.8.3 | Game statistics summary | Stats panel below leaderboard when is_game_over=True: buildings built, trades completed, trade volume, catastrophes survived, peak population |
 | ✅ | 4.8.4 | Back / Return to Menu button | Back + Play Again + Return to Menu buttons; game-over buttons via is_game_over flag |
 | ✅ | 4.8.5 | Highlight current player's row | ► name ◄ markers + summary label |
+
+### 4.9 — Action Error Handling & Feedback [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ✅ | 4.9.1 | Extract server error detail from 400 responses | `api.py` — parse `detail` field instead of raw HTTP error string |
+| ✅ | 4.9.2 | Toast notifications for build/upgrade errors | Shows "Insufficient materials (need 50)" instead of "400 Bad Request" |
+| ✅ | 4.9.3 | Toast notifications for trade errors | Market buy/sell: insufficient gold, insufficient stock, etc. |
+| ✅ | 4.9.4 | Toast notifications for worker allocation errors | Allocation mismatch, negative values, etc. |
+| ✅ | 4.9.5 | Success toasts for completed actions | Build started, upgrade started, trade completed, workers reallocated |
 
 ---
 

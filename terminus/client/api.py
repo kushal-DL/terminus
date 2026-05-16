@@ -93,6 +93,12 @@ class GameClient:
             json={"action_type": action_type, "payload": payload},
             headers=self._headers,
         )
+        if resp.status_code == 400:
+            try:
+                detail = resp.json().get("detail", "Action failed")
+            except Exception:
+                detail = "Action failed"
+            raise ValueError(detail)
         resp.raise_for_status()
         return resp.json()
 

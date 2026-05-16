@@ -47,6 +47,8 @@ terminus --port 9090    # Use a custom port (default: 8080)
 terminus --verbose      # Enable debug logging
 ```
 
+> **Windows note:** If `terminus` is not recognized after install, either restart your terminal or use `python -m terminus` instead. You can also add pip's Scripts directory to PATH — pip will show the path in the install output.
+
 ## Quick Start
 
 1. Run `terminus` — select **"Create Game"**

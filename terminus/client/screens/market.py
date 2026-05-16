@@ -183,13 +183,16 @@ class MarketScreen(Screen):
             if event.button.id == "btn-buy":
                 result = await client.submit_action("trade_buy", {"resource": resource, "quantity": qty})
                 status.update(f"✓ Bought {qty} {resource} for {result.get('cost', 0):.1f} gold")
+                self.app.notify_toast(f"✓ Bought {qty} {resource}", "success")
             elif event.button.id == "btn-sell":
                 result = await client.submit_action("trade_sell", {"resource": resource, "quantity": qty})
                 status.update(f"✓ Sold {qty} {resource} for {result.get('revenue', 0):.1f} gold")
+                self.app.notify_toast(f"✓ Sold {qty} {resource}", "success")
             await self._refresh_prices()
             await self._refresh_trade_history()
         except Exception as e:
             status.update(f"✗ {e}")
+            self.app.notify_toast(str(e), "error")
 
     def action_go_back(self) -> None:
         self.app.pop_screen()
