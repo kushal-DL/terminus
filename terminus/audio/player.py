@@ -60,16 +60,16 @@ class WinSoundBackend:
         self._winsound = winsound
 
     def play(self, wav_bytes: bytes) -> None:
-        def _play():
-            try:
-                self._winsound.PlaySound(
-                    wav_bytes,
-                    self._winsound.SND_MEMORY | self._winsound.SND_ASYNC | self._winsound.SND_NODEFAULT,
-                )
-            except Exception:
-                pass
-
-        threading.Thread(target=_play, daemon=True).start()
+        # Called from background thread (play_sound spawns one).
+        # Use SND_MEMORY for in-memory WAV. No SND_ASYNC since we're already
+        # in a background thread — synchronous play ensures buffer stays alive.
+        try:
+            self._winsound.PlaySound(
+                wav_bytes,
+                self._winsound.SND_MEMORY | self._winsound.SND_NODEFAULT,
+            )
+        except Exception:
+            pass
 
 
 class SubprocessBackend:

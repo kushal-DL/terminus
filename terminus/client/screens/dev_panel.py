@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, Footer, Input, Label, OptionList, Static, TextArea
 from textual.widgets.option_list import Option
@@ -27,11 +27,16 @@ class DevPanelScreen(ModalScreen):
     }
 
     #dev-panel {
-        width: 80;
-        height: 40;
+        width: 82;
+        height: 90%;
+        max-height: 50;
         border: thick $accent;
         background: $surface;
         padding: 1 2;
+    }
+
+    #dev-scroll {
+        height: 1fr;
     }
 
     #dev-title {
@@ -42,6 +47,7 @@ class DevPanelScreen(ModalScreen):
     }
 
     .dev-section {
+        height: auto;
         margin-bottom: 1;
     }
 
@@ -61,13 +67,19 @@ class DevPanelScreen(ModalScreen):
     }
 
     #player-selector {
-        height: 6;
+        height: 4;
         margin-bottom: 1;
     }
 
     #state-viewer {
-        height: 10;
+        height: 8;
         margin-top: 1;
+    }
+
+    #dev-status {
+        dock: bottom;
+        height: 1;
+        color: $text-muted;
     }
     """
 
@@ -79,38 +91,38 @@ class DevPanelScreen(ModalScreen):
     def compose(self) -> ComposeResult:
         with Vertical(id="dev-panel"):
             yield Static("═══ DEV PANEL (Host Only) ═══", id="dev-title")
+            with ScrollableContainer(id="dev-scroll"):
+                # Player selector
+                yield Static("─── Player ───", classes="dev-section-title")
+                yield OptionList(id="player-selector")
 
-            # Player selector
-            yield Static("─── Player ───", classes="dev-section-title")
-            yield OptionList(id="player-selector")
+                # Resource editor
+                yield Static("─── Set Resources ───", classes="dev-section-title")
+                with Horizontal(id="resource-inputs"):
+                    yield Input(placeholder="Food", id="input-food", type="number")
+                    yield Input(placeholder="Matrl", id="input-materials", type="number")
+                    yield Input(placeholder="Know", id="input-knowledge", type="number")
+                    yield Input(placeholder="Gold", id="input-gold", type="number")
+                    yield Input(placeholder="Pop", id="input-population", type="number")
+                    yield Input(placeholder="Morale", id="input-morale", type="number")
+                yield Button("Set Resources", id="btn-set-resources", variant="warning")
 
-            # Resource editor
-            yield Static("─── Set Resources ───", classes="dev-section-title")
-            with Horizontal(id="resource-inputs"):
-                yield Input(placeholder="Food", id="input-food", type="number")
-                yield Input(placeholder="Matrl", id="input-materials", type="number")
-                yield Input(placeholder="Know", id="input-knowledge", type="number")
-                yield Input(placeholder="Gold", id="input-gold", type="number")
-                yield Input(placeholder="Pop", id="input-population", type="number")
-                yield Input(placeholder="Morale", id="input-morale", type="number")
-            yield Button("Set Resources", id="btn-set-resources", variant="warning")
+                # Catastrophe controls
+                yield Static("─── Catastrophe ───", classes="dev-section-title")
+                with Horizontal(classes="dev-section"):
+                    yield Button("Trigger Now", id="btn-trigger-cat", variant="error")
+                    yield Button("0.5×", id="btn-speed-05")
+                    yield Button("1×", id="btn-speed-1")
+                    yield Button("2×", id="btn-speed-2")
+                    yield Button("5×", id="btn-speed-5")
 
-            # Catastrophe controls
-            yield Static("─── Catastrophe ───", classes="dev-section-title")
-            with Horizontal(classes="dev-section"):
-                yield Button("Trigger Now", id="btn-trigger-cat", variant="error")
-                yield Button("0.5×", id="btn-speed-05", variant="default")
-                yield Button("1×", id="btn-speed-1", variant="default")
-                yield Button("2×", id="btn-speed-2", variant="default")
-                yield Button("5×", id="btn-speed-5", variant="default")
+                # Building controls
+                yield Static("─── Buildings ───", classes="dev-section-title")
+                yield Button("Complete All Buildings", id="btn-complete-bldg", variant="success")
 
-            # Building controls
-            yield Static("─── Buildings ───", classes="dev-section-title")
-            yield Button("Complete All Buildings", id="btn-complete-bldg", variant="success")
-
-            # State viewer
-            yield Static("─── State ───", classes="dev-section-title")
-            yield TextArea("Loading...", id="state-viewer", read_only=True)
+                # State viewer
+                yield Static("─── State ───", classes="dev-section-title")
+                yield TextArea("Loading...", id="state-viewer", read_only=True)
 
             yield Label("", id="dev-status")
         yield Footer()
@@ -130,37 +142,43 @@ class DevPanelScreen(ModalScreen):
         client: GameClient = self.app._game_client  # type: ignore
         try:
             state = await client.admin_get_state()
-            # Update player list
-            players = state.get("players", [])
-            if players != self._players:
-                self._players = players
+            # Server returns players as dict: {player_id: {name, colony, ...}}
+            players_dict = state.get("players", {})
+            # Convert to list of (player_id, data) for selector
+            players_list = [
+                {"player_id": pid, **pdata}
+                for pid, pdata in players_dict.items()
+            ]
+            if players_list != self._players:
+                self._players = players_list
                 selector = self.query_one("#player-selector", OptionList)
                 selector.clear_options()
-                for p in players:
+                for p in players_list:
                     selector.add_option(Option(f"{p['name']} ({p['player_id'][:8]}…)"))
 
             # Update state viewer
             import json
             viewer = self.query_one("#state-viewer", TextArea)
-            # Show compact summary
+            # Show compact summary — resources are nested under colony
             summary = {
-                "turn": state.get("turn"),
+                "turn": state.get("elapsed_ticks"),
                 "phase": state.get("phase"),
-                "dev_mode": state.get("dev_mode"),
-                "players": [
-                    {
-                        "name": p["name"],
-                        "food": p.get("resources", {}).get("food"),
-                        "materials": p.get("resources", {}).get("materials"),
-                        "knowledge": p.get("resources", {}).get("knowledge"),
-                        "gold": p.get("resources", {}).get("gold"),
-                        "population": p.get("resources", {}).get("population"),
-                        "morale": p.get("resources", {}).get("morale"),
-                    }
-                    for p in players
-                ],
+                "players": [],
             }
+            for p in players_list:
+                colony = p.get("colony") or {}
+                resources = colony.get("resources") or {}
+                summary["players"].append({
+                    "name": p["name"],
+                    "food": resources.get("food"),
+                    "materials": resources.get("materials"),
+                    "knowledge": resources.get("knowledge"),
+                    "gold": resources.get("gold"),
+                    "population": colony.get("population"),
+                    "morale": colony.get("morale"),
+                })
             viewer.load_text(json.dumps(summary, indent=2))
+            self._set_status(f"● Refreshed (tick {state.get('elapsed_ticks', '?')})")
         except Exception as e:
             self._set_status(f"✗ Refresh failed: {e}")
 

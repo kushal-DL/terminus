@@ -569,7 +569,7 @@ def _require_dev_mode(token: str | None = None):
 @app.post("/game/dev-mode")
 async def toggle_dev_mode(request: Request):
     """Host-only: enable/disable dev mode for this game."""
-    token = request.headers.get("Authorization")
+    token = request.headers.get("x-token")
     player_id = _auth_player(token)
     engine = get_engine()
     player = engine.state.players.get(player_id)
@@ -582,7 +582,7 @@ async def toggle_dev_mode(request: Request):
 @app.get("/admin/state")
 async def admin_get_state(request: Request):
     """Full game state dump — all players, all colonies."""
-    _require_dev_mode(request.headers.get("Authorization"))
+    _require_dev_mode(request.headers.get("x-token"))
     engine = get_engine()
     players = {}
     for pid, player in engine.state.players.items():
@@ -617,7 +617,7 @@ async def admin_get_state(request: Request):
 @app.post("/admin/set-resources")
 async def admin_set_resources(request: Request, data: dict):
     """Set resources for a specific player. Body: {player_id, food, materials, knowledge, gold}"""
-    _require_dev_mode(request.headers.get("Authorization"))
+    _require_dev_mode(request.headers.get("x-token"))
     engine = get_engine()
     player_id = data.get("player_id")
     if not player_id:
@@ -645,7 +645,7 @@ async def admin_set_resources(request: Request, data: dict):
 @app.post("/admin/set-catastrophe-speed")
 async def admin_set_catastrophe_speed(request: Request, data: dict):
     """Adjust catastrophe timing. Body: {multiplier: float} — 0.5 = faster, 2.0 = slower."""
-    _require_dev_mode(request.headers.get("Authorization"))
+    _require_dev_mode(request.headers.get("x-token"))
     engine = get_engine()
     multiplier = float(data.get("multiplier", 1.0))
     if multiplier <= 0:
@@ -662,7 +662,7 @@ async def admin_set_catastrophe_speed(request: Request, data: dict):
 @app.post("/admin/trigger-catastrophe")
 async def admin_trigger_catastrophe(request: Request):
     """Force the next catastrophe to happen immediately."""
-    _require_dev_mode(request.headers.get("Authorization"))
+    _require_dev_mode(request.headers.get("x-token"))
     engine = get_engine()
     idx = engine.state.current_catastrophe_index
     if idx >= len(engine.state.catastrophe_schedule):
@@ -676,7 +676,7 @@ async def admin_trigger_catastrophe(request: Request):
 @app.post("/admin/complete-building")
 async def admin_complete_building(request: Request, data: dict):
     """Instantly complete all buildings under construction. Body: {player_id?}"""
-    _require_dev_mode(request.headers.get("Authorization"))
+    _require_dev_mode(request.headers.get("x-token"))
     engine = get_engine()
     player_id = data.get("player_id") or next(iter(engine.state.players), None)
     player = engine.state.players.get(player_id)
