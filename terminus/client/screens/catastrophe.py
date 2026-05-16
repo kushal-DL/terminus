@@ -36,9 +36,17 @@ class CatastropheScreen(Screen):
         art = get_catastrophe_art(category)
 
         with Vertical(id="catastrophe-container"):
-            yield Static("╔══════════════════════════════════════════════╗", classes="panel-title")
-            yield Static(f"║  ⚠  CATASTROPHE: {name.upper():25s}    ║", classes="panel-title")
-            yield Static("╚══════════════════════════════════════════════╝", classes="panel-title")
+            inner_width = 46
+            title = f"⚠  CATASTROPHE: {name.upper()}"
+            # ⚠ occupies 2 cells in terminal, so visual width is len +1
+            visual_len = len(title) + 1
+            pad_total = inner_width - visual_len
+            pad_left = pad_total // 2
+            pad_right = pad_total - pad_left
+            title_line = f"║{' ' * pad_left}{title}{' ' * pad_right}║"
+            yield Static("╔" + "═" * inner_width + "╗", classes="panel-title")
+            yield Static(title_line, classes="panel-title")
+            yield Static("╚" + "═" * inner_width + "╝", classes="panel-title")
             yield Label("")
             if art:
                 yield Static(art, id="catastrophe-art")

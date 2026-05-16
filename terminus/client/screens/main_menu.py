@@ -9,11 +9,12 @@ from textual.widgets import Button, Footer, Static
 
 
 TITLE_LINES = [
-    r" _____ _____ ____  __  __ ___ _  _ _   _ ____  ",
-    r"|_   _| ____|  _ \|  \/  |_ _| \| | | | / ___| ",
-    r"  | | |  _| | |_) | |\/| || || .` | | | \___ \ ",
-    r"  | | | |___|  _ <| |  | || || |\  | |_| |___) |",
-    r"  |_| |_____|_| \_\_|  |_|___|_| \_|\___/|____/ ",
+    r" _____ _____ ____  ___  ___ ___ __    _ _   _  ______  ",
+    r"|_   _| ____|  _ \|   \/   |_ _|  \  | | | | |/  ____| ",
+    r"  | | | |_  | |_| | |\  /| || ||   \ | | | | |\  \__ ",
+    r"  | | |  _| |    /| | \/ | || || |\ \| | | | | \__  \ ",
+    r"  | | | |___| |\ \| |    | || || | \   | |_| |____\  \\",
+    r"  |_| |_____|_| \_|_|    |_|___|_|  \__|\___/|_______/ ",
     r"                                                 ",
     r"     <<<  THE  LAST  STAND  BEGINS  HERE  >>>    ",
 ]
@@ -48,10 +49,10 @@ class MainMenuScreen(Screen):
             with Vertical(id="menu-container"):
                 yield Static("", id="title-art")
                 yield Button("[ Create Game ]", id="btn-create", classes="menu-button", variant="success")
-                yield Button("[ Join Game   ]", id="btn-join", classes="menu-button", variant="primary")
-                yield Button("[ Settings    ]", id="btn-settings", classes="menu-button")
+                yield Button("[  Join Game  ]", id="btn-join", classes="menu-button", variant="primary")
+                yield Button("[  Settings   ]", id="btn-settings", classes="menu-button")
                 yield Button("[ How to Play ]", id="btn-help", classes="menu-button")
-                yield Button("[ Quit        ]", id="btn-quit", classes="menu-button", variant="error")
+                yield Button("[     Quit    ]", id="btn-quit", classes="menu-button", variant="error")
         yield Footer()
 
     def on_mount(self) -> None:
