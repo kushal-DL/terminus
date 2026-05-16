@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 from textual.app import ComposeResult
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import Screen
 from textual.widgets import Button, Footer, Label, Static
 
@@ -62,7 +62,7 @@ class ColonyScreen(Screen):
             with Vertical(id="buildings-panel"):
                 yield Static("═══ BUILDINGS ═══", classes="panel-title")
                 yield Label("No buildings yet. Press [b] to build.", id="buildings-empty")
-                with Horizontal(id="buildings-grid"):
+                with ScrollableContainer(id="buildings-grid"):
                     pass  # BuildingCard widgets added dynamically
 
             # Action buttons
@@ -208,7 +208,7 @@ class ColonyScreen(Screen):
             )
 
             # Update buildings with BuildingCard widgets
-            grid = self.query_one("#buildings-grid", Horizontal)
+            grid = self.query_one("#buildings-grid", ScrollableContainer)
             empty_label = self.query_one("#buildings-empty", Label)
             if buildings:
                 visible = [b for b in buildings if b.get("level", 0) > 0 or b.get("under_construction", False)]

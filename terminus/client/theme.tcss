@@ -250,6 +250,14 @@ WorkerSlider:focus {
     height: 1fr;
 }
 
+#buildings-grid {
+    layout: grid;
+    grid-size: 3;
+    grid-gutter: 1;
+    height: auto;
+    min-height: 8;
+}
+
 #action-bar {
     height: 3;
     dock: bottom;

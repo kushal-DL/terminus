@@ -17,10 +17,9 @@ class BuildingCard(Widget):
         height: auto;
         min-height: 7;
         width: 1fr;
-        min-width: 24;
+        min-width: 20;
         border: round #444444;
         padding: 0 1;
-        margin: 0 1 0 0;
     }
     BuildingCard.under-construction {
         border: round #ffb000;
