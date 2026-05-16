@@ -1,0 +1,182 @@
+[
+  {
+    "id": "farm",
+    "name": "Farm",
+    "description": "Produces food to sustain your population.",
+    "category": "production",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 30, "gold": 10},
+      "2": {"materials": 60, "gold": 25},
+      "3": {"materials": 100, "gold": 50}
+    },
+    "build_time_ticks": {"1": 15, "2": 25, "3": 40},
+    "effects": {
+      "1": {"food_production_bonus": 0.3},
+      "2": {"food_production_bonus": 0.6},
+      "3": {"food_production_bonus": 1.0}
+    }
+  },
+  {
+    "id": "mine",
+    "name": "Mine",
+    "description": "Extracts materials from the earth.",
+    "category": "production",
+    "max_level": 3,
+    "costs": {
+      "1": {"food": 20, "gold": 15},
+      "2": {"food": 40, "gold": 35},
+      "3": {"food": 70, "gold": 60}
+    },
+    "build_time_ticks": {"1": 15, "2": 25, "3": 40},
+    "effects": {
+      "1": {"materials_production_bonus": 0.3},
+      "2": {"materials_production_bonus": 0.6},
+      "3": {"materials_production_bonus": 1.0}
+    }
+  },
+  {
+    "id": "lab",
+    "name": "Laboratory",
+    "description": "Advances knowledge through research.",
+    "category": "production",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 40, "gold": 20},
+      "2": {"materials": 80, "gold": 45},
+      "3": {"materials": 130, "gold": 80}
+    },
+    "build_time_ticks": {"1": 20, "2": 30, "3": 45},
+    "effects": {
+      "1": {"knowledge_production_bonus": 0.4},
+      "2": {"knowledge_production_bonus": 0.8},
+      "3": {"knowledge_production_bonus": 1.3}
+    }
+  },
+  {
+    "id": "market",
+    "name": "Market",
+    "description": "Generates gold income and enables NPC trading.",
+    "category": "production",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 35, "food": 15},
+      "2": {"materials": 70, "food": 30},
+      "3": {"materials": 120, "food": 55}
+    },
+    "build_time_ticks": {"1": 18, "2": 28, "3": 42},
+    "effects": {
+      "1": {"gold_production_bonus": 0.3, "trade_unlock": true},
+      "2": {"gold_production_bonus": 0.6, "trade_discount": 0.05},
+      "3": {"gold_production_bonus": 1.0, "trade_discount": 0.1}
+    }
+  },
+  {
+    "id": "hospital",
+    "name": "Hospital",
+    "description": "Heals the sick and protects against disease.",
+    "category": "defense",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 45, "knowledge": 15, "gold": 15},
+      "2": {"materials": 90, "knowledge": 35, "gold": 30},
+      "3": {"materials": 140, "knowledge": 60, "gold": 55}
+    },
+    "build_time_ticks": {"1": 20, "2": 35, "3": 50},
+    "effects": {
+      "1": {"plague_mitigation": 0.3, "healing_rate": 1},
+      "2": {"plague_mitigation": 0.6, "healing_rate": 2},
+      "3": {"plague_mitigation": 0.9, "healing_rate": 3}
+    }
+  },
+  {
+    "id": "wall",
+    "name": "Fortification Wall",
+    "description": "Protects against raiders, floods, and structural damage.",
+    "category": "defense",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 50, "gold": 10},
+      "2": {"materials": 100, "gold": 25},
+      "3": {"materials": 160, "gold": 45}
+    },
+    "build_time_ticks": {"1": 18, "2": 30, "3": 45},
+    "effects": {
+      "1": {"defense_bonus": 0.3},
+      "2": {"defense_bonus": 0.6},
+      "3": {"defense_bonus": 0.9}
+    }
+  },
+  {
+    "id": "warehouse",
+    "name": "Warehouse",
+    "description": "Stores excess resources, increasing capacity.",
+    "category": "utility",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 35, "gold": 5},
+      "2": {"materials": 70, "gold": 15},
+      "3": {"materials": 110, "gold": 30}
+    },
+    "build_time_ticks": {"1": 12, "2": 22, "3": 35},
+    "effects": {
+      "1": {"capacity_bonus_multiplier": 1.0},
+      "2": {"capacity_bonus_multiplier": 2.0},
+      "3": {"capacity_bonus_multiplier": 3.0}
+    }
+  },
+  {
+    "id": "housing",
+    "name": "Housing District",
+    "description": "Provides shelter, increasing maximum population.",
+    "category": "utility",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 40, "food": 20},
+      "2": {"materials": 80, "food": 40},
+      "3": {"materials": 130, "food": 65}
+    },
+    "build_time_ticks": {"1": 15, "2": 25, "3": 40},
+    "effects": {
+      "1": {"population_cap_bonus": 15},
+      "2": {"population_cap_bonus": 30},
+      "3": {"population_cap_bonus": 50}
+    }
+  },
+  {
+    "id": "school",
+    "name": "School",
+    "description": "Educates citizens, boosting morale and knowledge gain.",
+    "category": "utility",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 30, "knowledge": 10, "gold": 10},
+      "2": {"materials": 60, "knowledge": 25, "gold": 25},
+      "3": {"materials": 100, "knowledge": 45, "gold": 45}
+    },
+    "build_time_ticks": {"1": 18, "2": 28, "3": 42},
+    "effects": {
+      "1": {"knowledge_production_bonus": 0.15, "morale_bonus": 0.05},
+      "2": {"knowledge_production_bonus": 0.3, "morale_bonus": 0.1},
+      "3": {"knowledge_production_bonus": 0.5, "morale_bonus": 0.15}
+    }
+  },
+  {
+    "id": "watchtower",
+    "name": "Watchtower",
+    "description": "Reveals hints about upcoming catastrophes.",
+    "category": "utility",
+    "max_level": 3,
+    "costs": {
+      "1": {"materials": 25, "knowledge": 20},
+      "2": {"materials": 50, "knowledge": 45},
+      "3": {"materials": 85, "knowledge": 75}
+    },
+    "build_time_ticks": {"1": 15, "2": 25, "3": 40},
+    "effects": {
+      "1": {"hint_level": 1},
+      "2": {"hint_level": 2},
+      "3": {"hint_level": 3}
+    }
+  }
+]

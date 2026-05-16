@@ -1,0 +1,58 @@
+[
+  {
+    "id": "survivor",
+    "name": "Survivor",
+    "description": "Survive a catastrophe with zero population loss",
+    "icon": "🛡️",
+    "bonus_points": 50
+  },
+  {
+    "id": "hoarder",
+    "name": "Hoarder",
+    "description": "Fill any resource to maximum capacity",
+    "icon": "📦",
+    "bonus_points": 30
+  },
+  {
+    "id": "builder",
+    "name": "Master Builder",
+    "description": "Construct 5 or more buildings",
+    "icon": "🏗️",
+    "bonus_points": 40
+  },
+  {
+    "id": "fortified",
+    "name": "Fortified",
+    "description": "Have all defensive buildings at level 2 or higher",
+    "icon": "🏰",
+    "bonus_points": 60
+  },
+  {
+    "id": "trader",
+    "name": "Merchant Prince",
+    "description": "Complete 10 or more trades",
+    "icon": "💰",
+    "bonus_points": 35
+  },
+  {
+    "id": "scholar",
+    "name": "Scholar",
+    "description": "Upgrade the Library to level 3",
+    "icon": "📚",
+    "bonus_points": 45
+  },
+  {
+    "id": "populous",
+    "name": "Populous",
+    "description": "Reach a population of 200 or more",
+    "icon": "👥",
+    "bonus_points": 55
+  },
+  {
+    "id": "untouched",
+    "name": "Untouched",
+    "description": "Survive a catastrophe with no building damage",
+    "icon": "✨",
+    "bonus_points": 40
+  }
+]

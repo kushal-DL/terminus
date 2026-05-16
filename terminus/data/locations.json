@@ -1,0 +1,42 @@
+[
+  {
+    "id": "coast",
+    "name": "Coastal Settlement",
+    "description": "Rich fishing waters and busy trade ports. Vulnerable to water-based disasters.",
+    "flavor_text": "The salt air carries opportunity... and danger.",
+    "starting_resources": {"food": 120, "materials": 70, "knowledge": 10, "gold": 60},
+    "production_modifiers": {"food": 1.5, "materials": 1.0, "knowledge": 1.0, "gold": 1.5, "defense": 1.0}
+  },
+  {
+    "id": "mountain",
+    "name": "Mountain Stronghold",
+    "description": "Abundant minerals and natural defenses. Harsh terrain limits farming.",
+    "flavor_text": "The peaks stand eternal, but the earth stirs beneath...",
+    "starting_resources": {"food": 80, "materials": 110, "knowledge": 10, "gold": 50},
+    "production_modifiers": {"food": 0.8, "materials": 1.6, "knowledge": 1.0, "gold": 1.0, "defense": 1.6}
+  },
+  {
+    "id": "plains",
+    "name": "Open Plains",
+    "description": "Fertile farmland stretches to the horizon. Exposed to raiders and storms.",
+    "flavor_text": "The land provides, but there is nowhere to hide...",
+    "starting_resources": {"food": 130, "materials": 70, "knowledge": 10, "gold": 50},
+    "production_modifiers": {"food": 1.6, "materials": 1.0, "knowledge": 1.0, "gold": 1.0, "defense": 1.4}
+  },
+  {
+    "id": "forest",
+    "name": "Deep Forest",
+    "description": "Timber-rich woods with natural shelter. Fire is an ever-present threat.",
+    "flavor_text": "Ancient trees whisper secrets, but their shadows hide peril...",
+    "starting_resources": {"food": 100, "materials": 100, "knowledge": 10, "gold": 40},
+    "production_modifiers": {"food": 1.2, "materials": 1.5, "knowledge": 1.0, "gold": 0.8, "defense": 1.5}
+  },
+  {
+    "id": "desert",
+    "name": "Desert Oasis",
+    "description": "Ancient knowledge preserved in the sands. Trade caravans bring gold. Food is scarce.",
+    "flavor_text": "The desert remembers everything. It forgives nothing...",
+    "starting_resources": {"food": 70, "materials": 70, "knowledge": 20, "gold": 80},
+    "production_modifiers": {"food": 0.8, "materials": 1.0, "knowledge": 1.6, "gold": 1.6, "defense": 1.0}
+  }
+]

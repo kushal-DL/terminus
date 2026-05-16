@@ -1,0 +1,451 @@
+/* Terminus — Retro Terminal Theme */
+/* Color Palette:
+ *   bg:      #1a1a2e
+ *   green:   #00ff41  (primary / success)
+ *   amber:   #ffb000  (warning)
+ *   red:     #ff0040  (danger)
+ *   cyan:    #00d4ff  (info / knowledge)
+ *   gold:    #ffd700  (gold resource)
+ */
+
+Screen {
+    background: #1a1a2e;
+}
+
+/* ─── Title Art ─────────────────────────────────────────── */
+
+#title-art {
+    text-align: center;
+    color: #00ff41;
+    text-style: bold;
+    margin-top: 1;
+    margin-bottom: 0;
+}
+
+#frame-top, #frame-bot {
+    text-align: center;
+    color: #00ff41 50%;
+}
+
+/* ─── Menu ──────────────────────────────────────────────── */
+
+#menu-container {
+    width: 64;
+    height: auto;
+    padding: 1 2;
+}
+
+.menu-button {
+    width: 100%;
+    margin: 1 4;
+}
+
+.subtitle {
+    text-align: center;
+    color: #ffb000;
+    margin-top: 1;
+    margin-bottom: 2;
+}
+
+/* ─── Panels ────────────────────────────────────────────── */
+
+.panel-title {
+    text-style: bold;
+    color: #00d4ff;
+}
+
+.panel {
+    border: round #00ff41 30%;
+    padding: 1;
+    margin: 1 0;
+}
+
+/* ─── Art Preview Panels ────────────────────────────────── */
+
+#art-preview {
+    min-height: 12;
+    color: #00ff41;
+    border: round #00ff41 30%;
+    padding: 0 1;
+    margin: 0 1;
+}
+
+#building-art {
+    min-height: 7;
+    color: #00ff41;
+    border: round #00ff41 30%;
+    padding: 1;
+    margin: 1 0;
+}
+
+#setup-left, #setup-center {
+    width: 1fr;
+}
+
+#setup-right {
+    width: 1fr;
+    min-width: 35;
+}
+
+#build-layout {
+    height: 1fr;
+}
+
+#build-container {
+    width: 2fr;
+}
+
+#build-art-panel {
+    width: 1fr;
+    min-width: 22;
+    padding: 1;
+}
+
+/* ─── Status Bar ────────────────────────────────────────── */
+
+#status-bar {
+    dock: bottom;
+    height: 1;
+    background: #0d0d1a;
+    color: #00ff41;
+    padding: 0 1;
+}
+
+/* ─── App Status Bar (top) ──────────────────────────────── */
+
+#app-status-bar {
+    dock: top;
+    height: 1;
+    background: #0d0d1a;
+    color: #00ff41;
+    padding: 0 1;
+}
+
+#app-status-bar Horizontal {
+    height: 1;
+}
+
+.status-sep {
+    width: auto;
+    color: #00ff41 40%;
+}
+
+#status-connection {
+    width: auto;
+    min-width: 22;
+}
+
+#status-phase {
+    width: auto;
+    min-width: 12;
+    text-style: bold;
+}
+
+#status-players {
+    width: auto;
+    min-width: 14;
+}
+
+#status-timer {
+    width: auto;
+}
+
+/* ─── Resource Colors ───────────────────────────────────── */
+
+.resource-food {
+    color: #00ff41;
+}
+
+.resource-materials {
+    color: #ffb000;
+}
+
+.resource-knowledge {
+    color: #00d4ff;
+}
+
+.resource-gold {
+    color: #ffd700;
+}
+
+/* ─── ResourceBar Widget ────────────────────────────────── */
+
+ResourceBar {
+    height: 1;
+    width: 1fr;
+    min-width: 30;
+}
+
+ResourceBar.bar-high {
+    color: #00ff41;
+}
+
+ResourceBar.bar-mid {
+    color: #ffb000;
+}
+
+ResourceBar.bar-low {
+    color: #ff0040;
+}
+
+/* ─── CountdownTimer Widget ─────────────────────────────── */
+
+CountdownTimer {
+    height: 1;
+    text-style: bold;
+}
+
+/* ─── WorkerSlider Widget ───────────────────────────────── */
+
+WorkerSlider {
+    height: 1;
+    width: 1fr;
+}
+
+WorkerSlider:focus {
+    color: #00ff41;
+    text-style: bold;
+}
+
+/* ─── Colony Screen ─────────────────────────────────────── */
+
+#colony-screen {
+    padding: 0 1;
+}
+
+#top-bar {
+    height: 1;
+    dock: top;
+    padding: 0 1;
+}
+
+#info-bar {
+    height: 1;
+    padding: 0;
+    margin: 0;
+}
+
+#watchtower-hint {
+    height: auto;
+    max-height: 1;
+    margin: 0;
+    padding: 0;
+}
+
+#resources-panel {
+    border: round #00ff41 30%;
+    padding: 0 1;
+    height: auto;
+}
+
+#workers-panel {
+    border: round #00d4ff 30%;
+    padding: 1;
+    height: auto;
+}
+
+#buildings-panel {
+    border: round #ffb000 30%;
+    padding: 1;
+    height: 1fr;
+}
+
+#action-bar {
+    height: 3;
+    dock: bottom;
+    padding: 0 1;
+}
+
+/* ─── Workers Screen ────────────────────────────────────── */
+
+#workers-container {
+    padding: 1 2;
+}
+
+#workers-container WorkerSlider {
+    margin: 0 2;
+}
+
+#pool-label {
+    text-style: bold;
+    color: #00d4ff;
+    margin: 1 2;
+}
+
+/* ─── Catastrophe Screen ────────────────────────────────── */
+
+#catastrophe-container {
+    padding: 1 2;
+}
+
+#catastrophe-art {
+    color: #ff0040;
+    text-style: bold;
+    margin: 0 2;
+}
+
+#flavor-text {
+    color: #ffb000;
+    text-style: italic;
+}
+
+#dmg-population, #dmg-food, #dmg-materials, #dmg-buildings {
+    color: #ff0040;
+}
+
+
+/* ─── Health / Status Colors ────────────────────────────── */
+
+.health-high {
+    color: #00ff41;
+}
+
+.health-mid {
+    color: #ffb000;
+}
+
+.health-low {
+    color: #ff0040;
+}
+
+/* ─── Typography ────────────────────────────────────────── */
+
+.text-title {
+    text-style: bold;
+    color: #00ff41;
+}
+
+.text-muted {
+    color: #666680;
+}
+
+.text-bright {
+    text-style: bold;
+    color: #ffffff;
+}
+
+/* ─── Buttons ───────────────────────────────────────────── */
+
+Button {
+    background: #0d0d1a;
+    color: #00ff41;
+    border: tall #00ff41 30%;
+}
+
+Button:hover {
+    background: #00ff41 10%;
+    border: tall #00ff41;
+}
+
+Button:focus {
+    background: #00ff41 15%;
+    border: tall #00ff41;
+    text-style: bold;
+}
+
+Button.-success {
+    color: #00ff41;
+    border: tall #00ff41 50%;
+}
+
+Button.-primary {
+    color: #00d4ff;
+    border: tall #00d4ff 50%;
+}
+
+Button.-error {
+    color: #ff0040;
+    border: tall #ff0040 50%;
+}
+
+/* ─── Input Fields ──────────────────────────────────────── */
+
+Input {
+    background: #0d0d1a;
+    color: #00ff41;
+    border: tall #00ff41 30%;
+}
+
+Input:focus {
+    border: tall #00ff41;
+}
+
+/* ─── DataTable ─────────────────────────────────────────── */
+
+DataTable {
+    background: #1a1a2e;
+}
+
+DataTable > .datatable--header {
+    text-style: bold;
+    color: #00d4ff;
+    background: #0d0d1a;
+}
+
+DataTable > .datatable--cursor {
+    background: #00ff41 15%;
+    color: #ffffff;
+}
+
+/* ─── OptionList ────────────────────────────────────────── */
+
+OptionList {
+    background: #0d0d1a;
+    border: round #00ff41 30%;
+}
+
+OptionList:focus > .option-list--option-highlighted {
+    background: #00ff41 15%;
+    color: #ffffff;
+}
+
+/* ─── Catastrophe Screen ────────────────────────────────── */
+
+.catastrophe-name {
+    text-style: bold;
+    color: #ff0040;
+    text-align: center;
+}
+
+.catastrophe-flavor {
+    color: #ffb000;
+    text-align: center;
+}
+
+/* ─── Lobby ─────────────────────────────────────────────── */
+
+.share-url {
+    text-style: bold;
+    color: #00d4ff;
+    border: double #00d4ff 50%;
+    padding: 1;
+    margin: 1 0;
+    text-align: center;
+}
+
+.player-ready {
+    color: #00ff41;
+}
+
+.player-not-ready {
+    color: #ff0040;
+}
+
+/* ─── Animations & Effects ──────────────────────────────── */
+
+/* 7.9.4 — Construction completion flash: green border for 2s */
+BuildingCard.build-complete-flash {
+    border: double #00ff41;
+}
+
+/* 7.9.5 — Resource depletion warning: flash red when <10% */
+ResourceBar.resource-depleted {
+    background: #ff0040 30%;
+    color: #ff0040;
+    text-style: bold;
+}
+
+/* 7.9.6 — Screen transition: brief border highlight on push */
+.screen-transition {
+    border: round #00d4ff 50%;
+}

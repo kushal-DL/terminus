@@ -1,0 +1,46 @@
+[
+  {
+    "id": "military",
+    "name": "Military Doctrine",
+    "description": "Strong defenses and rapid fortification. Your walls rise fast and your soldiers fight hard.",
+    "flavor_text": "Strength through discipline. Safety through vigilance.",
+    "bonuses": {
+      "defense_multiplier": 1.4,
+      "construction_speed_bonus": 0.5,
+      "wall_build_discount": 0.2
+    }
+  },
+  {
+    "id": "trade",
+    "name": "Trade Federation",
+    "description": "Superior trading networks and gold generation. Buy low, sell high.",
+    "flavor_text": "Every coin has two sides. We profit from both.",
+    "bonuses": {
+      "gold_production_multiplier": 1.5,
+      "market_buy_discount": 0.15,
+      "market_sell_bonus": 0.15
+    }
+  },
+  {
+    "id": "science",
+    "name": "Academy of Knowledge",
+    "description": "Rapid research and technological advancement. Knowledge is your shield.",
+    "flavor_text": "In understanding lies power. In wisdom, survival.",
+    "bonuses": {
+      "knowledge_production_multiplier": 1.5,
+      "lab_build_discount": 0.2,
+      "watchtower_bonus_level": 1
+    }
+  },
+  {
+    "id": "agriculture",
+    "name": "Agrarian Society",
+    "description": "Bountiful harvests and rapid farm expansion. Your people never go hungry.",
+    "flavor_text": "The earth provides for those who tend it with care.",
+    "bonuses": {
+      "food_production_multiplier": 1.5,
+      "farm_build_discount": 0.2,
+      "population_growth_bonus": 0.3
+    }
+  }
+]
