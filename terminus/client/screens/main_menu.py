@@ -49,6 +49,7 @@ class MainMenuScreen(Screen):
                 yield Static("", id="title-art")
                 yield Button("[ Create Game ]", id="btn-create", classes="menu-button", variant="success")
                 yield Button("[ Join Game   ]", id="btn-join", classes="menu-button", variant="primary")
+                yield Button("[ Settings    ]", id="btn-settings", classes="menu-button")
                 yield Button("[ How to Play ]", id="btn-help", classes="menu-button")
                 yield Button("[ Quit        ]", id="btn-quit", classes="menu-button", variant="error")
         yield Footer()
@@ -73,6 +74,9 @@ class MainMenuScreen(Screen):
         elif event.button.id == "btn-join":
             from terminus.client.screens.lobby import JoinGameScreen
             self.app.push_screen(JoinGameScreen())
+        elif event.button.id == "btn-settings":
+            from terminus.client.screens.settings import SettingsScreen
+            self.app.push_screen(SettingsScreen())
         elif event.button.id == "btn-help":
             from terminus.client.screens.help import HelpScreen
             self.app.push_screen(HelpScreen())

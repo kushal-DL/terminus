@@ -203,6 +203,7 @@ class GameState(BaseModel):
     game_start_time: float | None = None  # timestamp when PLAYING started
     elapsed_ticks: int = 0
     score_history: list[dict[str, Any]] = Field(default_factory=list)  # snapshots after each catastrophe
+    dev_mode: bool = False  # Host-enabled dev mode (allows admin endpoints without env var)
 
 
 # ─── Action Models ───────────────────────────────────────────────────────────

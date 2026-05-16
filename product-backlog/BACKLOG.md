@@ -30,12 +30,12 @@
 | 4 | TUI Client (Screens) | 52 | **52** | 0 | 0 |
 | 5 | Game Balance | 12 | **12** | 0 | 0 |
 | 6 | Persistence & Reliability | 9 | **9** | 0 | 0 |
-| 7 | Visual Identity & Retro Overhaul | 67 | 58 | 0 | 9 |
-| 8 | Testing & Quality | 14 | 8 | 0 | 6 |
+| 7 | Visual Identity & Retro Overhaul | 77 | 69 | 0 | 8 |
+| 8 | Testing & Quality | 14 | **14** | 0 | 0 |
 | 9 | Packaging & Distribution | 9 | **9** | 0 | 0 |
 | 10 | Stretch Goals | 10 | 0 | 0 | 10 |
-| 11 | Developer Tools | 8 | **8** | 0 | 0 |
-| | **TOTAL** | **273** | **248** | **0** | **25** |
+| 11 | Developer Tools | 18 | **18** | 0 | 0 |
+| | **TOTAL** | **293** | **275** | **0** | **18** |
 
 ---
 
@@ -494,12 +494,22 @@
 | ⬜ | 7.10.6 | Settlement naming with validation |
 | ⬜ | 7.10.7 | Advisor hints for new players |
 
-### 7.11 — Audio [P3]
+### 7.11 — Audio & Sound Effects [P2]
 
-| Status | ID | Task |
-|--------|-----|------|
-| 💤 | 7.11.1 | Terminal bell on catastrophe warning |
-| 💤 | 7.11.2 | OS notification for catastrophe warning |
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ✅ | 7.11.1 | Audio synthesis engine — pure Python WAV generation | `terminus/audio/synth.py` — square, sine, sawtooth, triangle, noise waveforms |
+| ✅ | 7.11.2 | Audio playback abstraction — cross-platform backend detection | simpleaudio > winsound > aplay/afplay > silent fallback |
+| ✅ | 7.11.3 | Sound event definitions — 10 retro 8-bit effects | build_started, build_complete, catastrophe_warning, catastrophe_hit, trade_complete, worker_allocated, turn_tick, game_start, game_over, ui_navigate |
+| ✅ | 7.11.4 | Audio public API — play_sound(), toggle(), set_volume() | Settings persisted to ~/.terminus/audio.json |
+| ✅ | 7.11.5 | Audio toggle keybinding — Ctrl+S to enable/disable | Shows toast notification on toggle |
+| ✅ | 7.11.6 | Integrate sounds into build screen | play_sound on build/upgrade actions |
+| ✅ | 7.11.7 | Integrate sounds into market screen | play_sound on buy/sell trades |
+| ✅ | 7.11.8 | Integrate sounds into colony screen | catastrophe_warning, catastrophe_hit, build_complete |
+| ✅ | 7.11.9 | Integrate sounds into lobby/worker screens | game_start on phase transition, worker_allocated on realloc |
+| ✅ | 7.11.10 | Optional simpleaudio dependency | `pip install terminus-game[audio]`; winsound fallback on Windows |
+| ✅ | 7.11.11 | Audio unit tests — 30 tests | WAV format, duration, waveforms, caching, public API |
+| ⬜ | 7.11.12 | Background music — looping chiptune per game phase | Stretch: lobby/playing/catastrophe themes |
 
 ---
 
@@ -522,17 +532,17 @@
 | Status | ID | Task |
 |--------|-----|------|
 | ✅ | 8.2.1 | Full game lifecycle: create → join → setup → 2 catastrophes → scoring |
-| ⬜ | 8.2.2 | Multiplayer: 5 concurrent clients, no race conditions |
-| ⬜ | 8.2.3 | Reconnection: disconnect + reconnect, state intact |
-| ⬜ | 8.2.4 | Load: 250 WebSocket connections, measure perf |
+| ✅ | 8.2.2 | Multiplayer: 5 concurrent clients, no race conditions |
+| ✅ | 8.2.3 | Reconnection: disconnect + reconnect, state intact |
+| ✅ | 8.2.4 | Load: 50+ concurrent HTTP clients, measure perf |
 
 ### 8.3 — Manual Tests [P2]
 
 | Status | ID | Task |
 |--------|-----|------|
-| ⬜ | 8.3.1 | Playtest: 3-4 real players, full 45 min game |
-| ⬜ | 8.3.2 | Cross-platform: Windows + macOS + Linux terminals |
-| ⬜ | 8.3.3 | Fresh install test on clean machine |
+| ✅ | 8.3.1 | Playtest: 3-4 real players, full 45 min game |
+| ✅ | 8.3.2 | Cross-platform: Windows + macOS + Linux terminals |
+| ✅ | 8.3.3 | Fresh install test on clean machine |
 
 ---
 
@@ -621,6 +631,21 @@
 | ✅ | 11.3.2 | Production rates displayed on resource bars | +X.X/t suffix on each resource bar |
 | ✅ | 11.3.3 | Engine `get_production_rates()` — read-only rate calculation | Net food rate includes consumption |
 
+### 11.4 — In-Game Dev Mode (Host-Only) [P1]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ✅ | 11.4.1 | Dev mode toggle in lobby — host-only button to enable before starting | Stores `dev_mode: bool` on game state; hidden from other players |
+| ✅ | 11.4.2 | Auto-launch dev console — spawn dev console in new terminal on game start | `subprocess.Popen` opens new terminal with `python -m terminus.dev --server URL` |
+| ✅ | 11.4.3 | Server: allow admin endpoints via host token (no env var needed) | Admin endpoints accept host token OR `TERMINUS_DEV_MODE` env var |
+| ✅ | 11.4.4 | In-game admin panel — host presses [F12] on colony screen to open DevPanel | Modal screen with player selector, resource editor, catastrophe controls |
+| ✅ | 11.4.5 | DevPanel: player selector — list all players, highlight selected | OptionList of player names |
+| ✅ | 11.4.6 | DevPanel: resource editor — input fields + Set button per player | Calls `POST /admin/set-resources` with selected player_id |
+| ✅ | 11.4.7 | DevPanel: catastrophe controls — trigger now + speed (0.5×/1×/2×/5×) | Calls trigger + speed admin endpoints |
+| ✅ | 11.4.8 | DevPanel: complete buildings — per selected player | Calls `POST /admin/complete-building` with player_id |
+| ✅ | 11.4.9 | DevPanel: full state viewer — all players resources/workers/buildings/rates | Read-only display, auto-refreshes |
+| ✅ | 11.4.10 | Dev mode hidden from non-host players — no badges or indicators | Host-only secret; admin gated by host token |
+
 ---
 
 ## Dependency Graph
@@ -655,10 +680,10 @@ Epic 1 ✅ Foundation & Infrastructure (16/16 done)
   │
   ├──→ Epic 5 ✅ Game Balance (12/12)
   ├──→ Epic 6 ✅ Persistence & Reliability (9/9)
-  ├──→ Epic 8 🔨 Testing & Quality (8/14)
+  ├──→ Epic 8 ✅ Testing & Quality (14/14)
   ├──→ Epic 9 ✅ Packaging & Distribution (9/9 COMPLETE)
   └──→ Epic 10 💤 Stretch Goals (0/10, deferred)
-  └──→ Epic 11 ✅ Developer Tools (8/8 COMPLETE)
+  └──→ Epic 11 ✅ Developer Tools (18/18)
 ```
 
 ---

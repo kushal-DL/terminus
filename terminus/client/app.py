@@ -65,6 +65,7 @@ class TerminusApp(App):
 
     BINDINGS = [
         Binding("q", "quit", "Quit", show=True),
+        Binding("ctrl+s", "toggle_sound", "Sound", show=True),
     ]
 
     def compose(self) -> ComposeResult:
@@ -72,7 +73,18 @@ class TerminusApp(App):
         yield ToastRack(id="app-toast-rack")
 
     def on_mount(self) -> None:
+        import os
+        # Auto-enable dev mode if env var is set
+        if os.environ.get("TERMINUS_DEV_MODE") == "1":
+            self._dev_mode_enabled = True
         self.push_screen(MainMenuScreen())
+
+    def action_toggle_sound(self) -> None:
+        """Toggle audio on/off."""
+        from terminus.audio import toggle, is_enabled
+        new_state = toggle()
+        status = "ON" if new_state else "OFF"
+        self.notify_toast(f"Sound: {status}", "info")
 
     def push_screen(self, screen: Screen, *args, **kwargs) -> None:  # type: ignore[override]
         """Push screen with a brief border highlight transition effect."""

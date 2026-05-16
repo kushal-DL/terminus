@@ -10,16 +10,40 @@ Multiplayer CLI survival strategy game. Manage your settlement, allocate workers
 
 ## Table of Contents
 
+- [Preview](#preview)
 - [Install](#install)
 - [Run the Game](#run-the-game)
 - [Step-by-Step: Playing Your First Game](#step-by-step-playing-your-first-game)
 - [Multiplayer Setup](#multiplayer-setup)
 - [Gameplay Guide](#gameplay-guide)
+- [Audio & Sound Effects](#audio--sound-effects)
 - [Commands Reference](#commands-reference)
 - [Dev Console (Admin Tools)](#dev-console-admin-tools)
 - [Development](#development)
 - [FAQ & Troubleshooting](#faq--troubleshooting)
 - [License](#license)
+
+---
+
+## Preview
+
+<table>
+<tr>
+<td align="center"><strong>Main Menu</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/main-menu.gif" width="380" alt="Main menu and game creation flow"></td>
+<td align="center"><strong>Colony Management</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/colony.gif" width="380" alt="Colony screen with live resources"></td>
+</tr>
+<tr>
+<td align="center"><strong>Build & Upgrade</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/build.gif" width="380" alt="Building construction"></td>
+<td align="center"><strong>Catastrophe!</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/catastrophe.gif" width="380" alt="Catastrophe event"></td>
+</tr>
+<tr>
+<td align="center"><strong>Market Trading</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/market.gif" width="380" alt="Market buy and sell"></td>
+<td align="center"><strong>Multiplayer Lobby</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/lobby.gif" width="380" alt="Players joining lobby"></td>
+</tr>
+<tr>
+<td align="center" colspan="2"><strong>Dev Panel (Host-Only)</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/dev-panel.gif" width="380" alt="F12 admin dev panel"></td>
+</tr>
+</table>
 
 ---
 
@@ -206,6 +230,39 @@ Players connect via the server's IP. The server runs headless (no TUI). Supports
 - **Watch the watchtower** — gives hints about the next catastrophe type
 - **Trade wisely** — market prices fluctuate, buy low and sell high
 - **Upgrade buildings** — level 2 and 3 buildings are significantly more powerful
+
+---
+
+## Audio & Sound Effects
+
+Terminus includes retro 8-bit sound effects that bring the terminal to life:
+
+| Event | Sound |
+|-------|-------|
+| Build started | Rising chirp |
+| Build complete | C-E-G arpeggio jingle |
+| Catastrophe warning | Alarm klaxon |
+| Catastrophe hit | Noise burst impact |
+| Trade complete | Cash register blip |
+| Worker allocated | Click/tick |
+| Game start | 4-note fanfare |
+| Game over | Descending tone |
+
+### Enable/Disable
+
+Press **Ctrl+S** during gameplay to toggle sound on/off. Your preference is saved across sessions.
+
+### Install audio support
+
+Sound playback requires the optional `simpleaudio` package:
+
+```bash
+pip install terminus-game[audio]
+```
+
+On Windows, the built-in `winsound` module is used as a fallback (no extra install needed).
+
+> **Note**: All sounds are synthesized programmatically — no audio files are downloaded or shipped. If no audio backend is available, sounds are silently disabled.
 
 ---
 

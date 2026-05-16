@@ -203,10 +203,14 @@ class BuildScreen(Screen):
                 result = await client.submit_action("build", {"building_type": building_id})
                 status.update(f"✓ {result.get('status', 'OK')}")
                 self.app.notify_toast(f"✓ Started building {building_id}", "success")
+                from terminus.audio import play_sound
+                play_sound("build_started")
             elif event.button.id == "btn-upgrade":
                 result = await client.submit_action("upgrade", {"building_type": building_id})
                 status.update(f"✓ {result.get('status', 'OK')}")
                 self.app.notify_toast(f"✓ Upgrading {building_id}", "success")
+                from terminus.audio import play_sound
+                play_sound("build_started")
             # Refresh state after action
             await self.on_mount()
         except Exception as e:

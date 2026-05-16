@@ -54,6 +54,9 @@ dev = [
 build = [
     "pyinstaller>=6.0",
 ]
+audio = [
+    "simpleaudio>=1.0,<2.0",
+]
 
 [tool.pytest.ini_options]
 markers = [

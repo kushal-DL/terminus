@@ -84,6 +84,8 @@ class WorkersScreen(Screen):
                 await client.submit_action("allocate_workers", {"allocation": allocation})
                 status.update("✓ Workers reallocated!")
                 self.app.notify_toast("✓ Workers reallocated!", "success")
+                from terminus.audio import play_sound
+                play_sound("worker_allocated")
                 await asyncio.sleep(1)
                 self.app.pop_screen()
             except Exception as e:

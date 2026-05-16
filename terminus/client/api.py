@@ -112,6 +112,40 @@ class GameClient:
         resp.raise_for_status()
         return resp.json()
 
+    # ─── Dev Mode / Admin ────────────────────────────────────────────────
+
+    async def toggle_dev_mode(self) -> dict:
+        """Host-only: toggle dev mode on/off."""
+        resp = await self._http.post("/game/dev-mode", headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def admin_get_state(self) -> dict:
+        resp = await self._http.get("/admin/state", headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def admin_set_resources(self, player_id: str, **resources) -> dict:
+        data = {"player_id": player_id, **resources}
+        resp = await self._http.post("/admin/set-resources", json=data, headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def admin_set_catastrophe_speed(self, multiplier: float) -> dict:
+        resp = await self._http.post("/admin/set-catastrophe-speed", json={"multiplier": multiplier}, headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def admin_trigger_catastrophe(self) -> dict:
+        resp = await self._http.post("/admin/trigger-catastrophe", json={}, headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
+    async def admin_complete_building(self, player_id: str) -> dict:
+        resp = await self._http.post("/admin/complete-building", json={"player_id": player_id}, headers=self._headers)
+        resp.raise_for_status()
+        return resp.json()
+
     # ─── WebSocket Connection ────────────────────────────────────────────
 
     async def connect_ws(self) -> None:

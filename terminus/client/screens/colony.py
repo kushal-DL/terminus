@@ -21,6 +21,7 @@ class ColonyScreen(Screen):
         ("w", "open_workers", "Workers"),
         ("m", "open_market", "Market"),
         ("l", "open_leaderboard", "Scores"),
+        ("f12", "open_dev_panel", "Dev Panel"),
     ]
 
     def __init__(self, **kwargs):
@@ -83,6 +84,8 @@ class ColonyScreen(Screen):
             seconds = data.get("seconds_until", 0)
             timer = self.query_one("#catastrophe-timer", CountdownTimer)
             timer.start(int(seconds))
+            from terminus.audio import play_sound
+            play_sound("catastrophe_warning")
             hint = data.get("hint_text")
             if hint:
                 self.app.notify_toast(f"⚠ {hint}", "warning")  # type: ignore
@@ -90,6 +93,8 @@ class ColonyScreen(Screen):
                 self.app.notify_toast(f"⚠ Catastrophe incoming in {int(seconds)}s!", "warning")  # type: ignore
         elif event == "catastrophe_started":
             from terminus.client.screens.catastrophe import CatastropheScreen
+            from terminus.audio import play_sound
+            play_sound("catastrophe_hit")
             self.app.push_screen(CatastropheScreen(data))
         elif event == "catastrophe_results":
             # Forward results to the active catastrophe screen if present
@@ -257,6 +262,8 @@ class ColonyScreen(Screen):
                             self.app.notify_toast(
                                 f"✓ {btype.title()} construction complete!", "success"
                             )  # type: ignore
+                            from terminus.audio import play_sound
+                            play_sound("build_complete")
                             card.flash_complete()
                         self._prev_building_states[btype] = is_building
 
@@ -315,6 +322,14 @@ class ColonyScreen(Screen):
     def action_open_leaderboard(self) -> None:
         from terminus.client.screens.leaderboard import LeaderboardScreen
         self.app.push_screen(LeaderboardScreen([]))
+
+    def action_open_dev_panel(self) -> None:
+        import os
+        dev_enabled = getattr(self.app, "_dev_mode_enabled", False) or os.environ.get("TERMINUS_DEV_MODE") == "1"
+        if not dev_enabled:
+            return
+        from terminus.client.screens.dev_panel import DevPanelScreen
+        self.app.push_screen(DevPanelScreen())
 
     def on_unmount(self) -> None:
         if self._refresh_task:

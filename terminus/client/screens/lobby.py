@@ -176,6 +176,7 @@ class LobbyWaitScreen(Screen):
         self.is_host = is_host
         self._refresh_task: asyncio.Task | None = None
         self._my_ready: bool = False
+        self._dev_mode: bool = False
 
     def compose(self) -> ComposeResult:
         with Vertical(id="lobby-container"):
@@ -208,6 +209,7 @@ class LobbyWaitScreen(Screen):
                 yield Button("✓ Ready", id="btn-ready", variant="success")
                 if self.is_host:
                     yield Button("▶ Start Game", id="btn-start-game", variant="warning")
+                    yield Button("🔧 Dev Mode", id="btn-dev-mode", variant="default")
             yield Label("", id="lobby-status")
         yield Footer()
 
@@ -260,6 +262,8 @@ class LobbyWaitScreen(Screen):
             if lobby.get("phase") == "setup":
                 if self._refresh_task:
                     self._refresh_task.cancel()
+                from terminus.audio import play_sound
+                play_sound("game_start")
                 from terminus.client.screens.setup import SetupScreen
                 self.app.push_screen(SetupScreen())
         except Exception:
@@ -277,8 +281,12 @@ class LobbyWaitScreen(Screen):
         elif event.button.id == "btn-start-game":
             try:
                 await client.start_game()
+                if self._dev_mode:
+                    self._launch_dev_console()
             except Exception as e:
                 self.query_one("#lobby-status", Label).update(f"✗ {e}")
+        elif event.button.id == "btn-dev-mode":
+            await self._toggle_dev_mode()
         elif event.button.id in ("btn-less-cats", "btn-more-cats"):
             await self._adjust_catastrophes(event.button.id)
 
@@ -299,6 +307,67 @@ class LobbyWaitScreen(Screen):
             resp.raise_for_status()
         except Exception as e:
             self.query_one("#lobby-status", Label).update(f"✗ {e}")
+
+    async def _toggle_dev_mode(self) -> None:
+        """Toggle dev mode on/off (host-only)."""
+        client: GameClient = self.app._game_client  # type: ignore
+        try:
+            result = await client.toggle_dev_mode()
+            self._dev_mode = result.get("dev_mode", False)
+            self.app._dev_mode_enabled = self._dev_mode  # type: ignore
+            btn = self.query_one("#btn-dev-mode", Button)
+            if self._dev_mode:
+                btn.label = "🔧 Dev Mode: ON"
+                btn.variant = "success"
+                self.query_one("#lobby-status", Label).update("Dev mode enabled — admin panel available in-game [F12]")
+            else:
+                btn.label = "🔧 Dev Mode"
+                btn.variant = "default"
+                self.query_one("#lobby-status", Label).update("Dev mode disabled")
+        except Exception as e:
+            self.query_one("#lobby-status", Label).update(f"✗ {e}")
+
+    def _launch_dev_console(self) -> None:
+        """Spawn dev console in a new terminal window."""
+        import subprocess
+        import sys
+        import platform
+
+        client: GameClient = self.app._game_client  # type: ignore
+        server_url = client.server_url
+        python = sys.executable
+
+        try:
+            if platform.system() == "Windows":
+                subprocess.Popen(
+                    ["cmd", "/c", "start", "cmd", "/k",
+                     python, "-m", "terminus.dev", "--server", server_url],
+                    env={**__import__("os").environ, "TERMINUS_DEV_MODE": "1"},
+                )
+            elif platform.system() == "Darwin":
+                script = f'{python} -m terminus.dev --server {server_url}'
+                subprocess.Popen(
+                    ["osascript", "-e", f'tell app "Terminal" to do script "{script}"'],
+                    env={**__import__("os").environ, "TERMINUS_DEV_MODE": "1"},
+                )
+            else:
+                # Linux: try common terminal emulators
+                for term in ["gnome-terminal", "xterm", "konsole"]:
+                    import shutil
+                    if shutil.which(term):
+                        if term == "gnome-terminal":
+                            subprocess.Popen(
+                                [term, "--", python, "-m", "terminus.dev", "--server", server_url],
+                                env={**__import__("os").environ, "TERMINUS_DEV_MODE": "1"},
+                            )
+                        else:
+                            subprocess.Popen(
+                                [term, "-e", f"{python} -m terminus.dev --server {server_url}"],
+                                env={**__import__("os").environ, "TERMINUS_DEV_MODE": "1"},
+                            )
+                        break
+        except Exception:
+            pass  # Non-critical — dev console is also accessible via F12 panel
 
     def _update_ready_button(self) -> None:
         """Update ready button label and variant to match current state."""

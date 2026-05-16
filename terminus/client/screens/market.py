@@ -184,10 +184,14 @@ class MarketScreen(Screen):
                 result = await client.submit_action("trade_buy", {"resource": resource, "quantity": qty})
                 status.update(f"✓ Bought {qty} {resource} for {result.get('cost', 0):.1f} gold")
                 self.app.notify_toast(f"✓ Bought {qty} {resource}", "success")
+                from terminus.audio import play_sound
+                play_sound("trade_complete")
             elif event.button.id == "btn-sell":
                 result = await client.submit_action("trade_sell", {"resource": resource, "quantity": qty})
                 status.update(f"✓ Sold {qty} {resource} for {result.get('revenue', 0):.1f} gold")
                 self.app.notify_toast(f"✓ Sold {qty} {resource}", "success")
+                from terminus.audio import play_sound
+                play_sound("trade_complete")
             await self._refresh_prices()
             await self._refresh_trade_history()
         except Exception as e:
