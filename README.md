@@ -297,6 +297,22 @@ export PATH="$HOME/.local/bin:$PATH"
 # Add to ~/.bashrc or ~/.zshrc to make permanent
 ```
 
+### `terminus` — "Access is denied" on Windows
+
+**Cause:** Windows or your antivirus is blocking the newly installed `terminus.exe`.
+
+**Fix:**
+```powershell
+# Option A: Use python -m (bypasses the exe entirely)
+python -m terminus
+
+# Option B: Unblock the exe (run PowerShell as Administrator)
+Unblock-File "$((pip show terminus-game | Select-String Location).ToString().Split()[-1])\..\Scripts\terminus.exe"
+
+# Option C: If your antivirus is blocking it, add an exclusion for
+# the pip Scripts folder shown in the install output.
+```
+
 ### `ModuleNotFoundError: No module named 'textual'`
 
 **Cause:** Dependencies didn't install into the same Python environment.
