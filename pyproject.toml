@@ -36,9 +36,9 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/terminus-game/terminus"
-Repository = "https://github.com/terminus-game/terminus"
-Issues = "https://github.com/terminus-game/terminus/issues"
+Homepage = "https://github.com/kushal-DL/terminus"
+Repository = "https://github.com/kushal-DL/terminus"
+Issues = "https://github.com/kushal-DL/terminus/issues"
 
 [tool.hatch.build.targets.wheel]
 packages = ["terminus"]

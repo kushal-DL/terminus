@@ -16,20 +16,20 @@ pip install terminus-game
 ### From GitHub
 
 ```bash
-pip install git+https://github.com/terminus-game/terminus.git
+pip install git+https://github.com/kushal-DL/terminus.git
 ```
 
 ### From source (development)
 
 ```bash
-git clone https://github.com/terminus-game/terminus.git
+git clone https://github.com/kushal-DL/terminus.git
 cd terminus
 pip install -e ".[dev]"
 ```
 
 ### Pre-built executable
 
-Download the latest release for your platform from [GitHub Releases](https://github.com/terminus-game/terminus/releases) — no Python installation required.
+Download the latest release for your platform from [GitHub Releases](https://github.com/kushal-DL/terminus/releases) — no Python installation required.
 
 ## Prerequisites
 
