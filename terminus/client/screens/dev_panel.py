@@ -149,12 +149,19 @@ class DevPanelScreen(ModalScreen):
                 {"player_id": pid, **pdata}
                 for pid, pdata in players_dict.items()
             ]
-            if players_list != self._players:
-                self._players = players_list
+            # Only rebuild option list if player IDs changed (avoids losing selection)
+            current_ids = [p["player_id"] for p in self._players]
+            new_ids = [p["player_id"] for p in players_list]
+            if new_ids != current_ids:
                 selector = self.query_one("#player-selector", OptionList)
+                saved_idx = selector.highlighted
                 selector.clear_options()
                 for p in players_list:
                     selector.add_option(Option(f"{p['name']} ({p['player_id'][:8]}…)"))
+                # Restore selection
+                if saved_idx is not None and saved_idx < len(players_list):
+                    selector.highlighted = saved_idx
+            self._players = players_list
 
             # Update state viewer
             import json

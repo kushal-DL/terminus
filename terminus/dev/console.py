@@ -255,14 +255,8 @@ class DevConsoleApp(App):
         yield Label("", id="status-bar")
         yield Footer()
 
-    async def on_mount(self) -> None:
-        self._refresh_task = asyncio.create_task(self._auto_refresh())
-
-    async def _auto_refresh(self) -> None:
-        """Poll server state every 2 seconds."""
-        while True:
-            await self._do_refresh()
-            await asyncio.sleep(2)
+    def on_mount(self) -> None:
+        self._refresh_task = self.set_interval(2, self._do_refresh)
 
     async def _do_refresh(self) -> None:
         """Fetch full state and update UI."""

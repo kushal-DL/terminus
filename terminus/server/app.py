@@ -651,11 +651,12 @@ async def admin_set_catastrophe_speed(request: Request, data: dict):
     if multiplier <= 0:
         raise HTTPException(400, "Multiplier must be positive")
     # Scale remaining scheduled catastrophes
+    # multiplier means "N× faster", so divide remaining time by multiplier
     now_elapsed = time.time() - (engine.state.game_start_time or time.time())
     for i, event in enumerate(engine.state.catastrophe_schedule):
         if not event.resolved and i >= engine.state.current_catastrophe_index:
             remaining = event.scheduled_time - now_elapsed
-            event.scheduled_time = now_elapsed + remaining * multiplier
+            event.scheduled_time = now_elapsed + remaining / multiplier
     return {"status": "ok", "multiplier": multiplier}
 
 

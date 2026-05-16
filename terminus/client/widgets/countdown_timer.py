@@ -84,5 +84,8 @@ class CountdownTimer(Widget):
             self.add_class("timer-final")
 
     def render(self) -> RenderResult:
-        mins, secs = divmod(max(self.seconds_remaining, 0), 60)
+        s = self.seconds_remaining
+        if s <= 0 and not self.running:
+            return " --:-- "
+        mins, secs = divmod(max(s, 0), 60)
         return f" {mins:02d}:{secs:02d} "
