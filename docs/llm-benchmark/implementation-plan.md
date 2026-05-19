@@ -24,39 +24,303 @@ This document outlines the technical implementation phases, aligned with the 8-d
 
 **Goal:** Define the communication contract between the orchestrator and LLM models.
 
-**Reference docs:** [schemas.md](schemas.md), [prompt-template.md](prompt-template.md)
+**Reference docs:** [schemas.md](schemas.md), [prompt-template.md](prompt-template.md), [error-handling.md](error-handling.md)
 
-### Tasks:
-1. Implement `BenchmarkGameState` Pydantic model (what the LLM sees each turn)
-2. Implement `ActionResponse` Pydantic model (what the LLM returns — action + structured reasoning)
-3. Create abstract `LLMAdapter` interface with:
-   - `async get_action(state: BenchmarkGameState, history: list[Message]) → ActionResponse`
-   - `async test_connection() → bool`
-   - `get_token_count(messages: list[Message]) → int`
-4. Implement OpenAI-compatible adapter (covers GPT-4o, Claude via proxy, local via Ollama/vLLM/LM Studio)
-5. Implement direct Anthropic adapter (native Messages API)
-6. Implement direct Google Generative AI adapter (Gemini)
-7. Implement JSON extraction + schema coercion logic (see [error-handling.md](error-handling.md) §E1/E2)
-8. Implement token counting per adapter (tiktoken for OpenAI, character estimation for others)
+**Status:** NOT STARTED
 
-### New Files:
+**Existing code to refactor:** `terminus/benchmark/orchestrator.py` already has a basic `LLMAdapter` class with `_build_prompt()`, `_call_api()`, and `_parse_response()`. Phase 1 replaces this with a proper multi-provider architecture using the schemas defined in [schemas.md](schemas.md).
+
+---
+
+### Sub-tasks (implementation order):
+
+#### 1.1 — Schemas (`terminus/benchmark/schemas.py`)
+
+Create all Pydantic v2 models from [schemas.md](schemas.md):
+
+| Model | Purpose | Key Fields |
+|-------|---------|------------|
+| `ModelConfig` | Per-model API configuration | provider, endpoint, model, api_key_env, context_window, rate_limit_rpm, timeout_seconds |
+| `BenchmarkConfig` | Top-level run configuration | models[], games_per_matchup, max_turns, speed_multiplier, opponents[], weight_preset |
+| `ResourceState` | Current resource levels | food, materials, knowledge, gold |
+| `WorkerAllocation` | Worker distribution | farming, mining, research, construction, defense, medicine |
+| `BuildingState` | Single building state | type, level, health, under_construction, ticks_remaining |
+| `MarketPrices` | Market prices | food, materials, knowledge |
+| `OpponentInfo` | Visible opponent data | name, score, population, building_count |
+| `CatastropheWarning` | Active warning | category, type, ticks_until, estimated_severity |
+| `TradeOfferInfo` | P2P trade offer visible to LLM | offer_id, from_player, offer_resources, request_resources, ticks_remaining |
+| `AvailableAction` | Filtered action option | action_type, description, cost, params_hint |
+| `BenchmarkGameState` | Complete state sent to LLM each turn | turn, score, resources, workers, buildings, market, opponents, available_actions, incoming_trades |
+| `ReasoningFactor` | Single reasoning factor | factor (enum), weight (0-1) |
+| `Reasoning` | Structured reasoning | factors[] (sum to ~1.0) |
+| `ActionResponse` | LLM's complete response | action (ActionType), params (union), reasoning |
+| `TurnSnapshot` | Per-turn recording | state, response, validity, latency_ms, tokens_used, retry_count |
+| `GameRecording` | Full game record | turns[], final_score, opponent, duration, dq_reason |
+
+**Validation rules:**
+- `ReasoningFactor.weight` values must sum to ~1.0 (±0.05 tolerance)
+- `WorkerAllocation` fields must all be ≥ 0
+- `ModelConfig` must have either `api_key` or `api_key_env` (unless provider="ollama")
+- `BenchmarkConfig.custom_weights` only used when `weight_preset="custom"`
+
+**Design decisions:**
+- Use Pydantic v2 `model_validator` for cross-field validation
+- ActionResponse.params uses discriminated union via action type
+- All enums use string values for JSON serialization clarity
+- TradeOfferInfo added (new vs. original schema spec) to expose P2P trading to LLMs
+
+---
+
+#### 1.2 — Abstract LLM Adapter (`terminus/benchmark/agent.py`)
+
+Replace the existing basic `LLMAdapter` class with a proper abstract interface:
+
+```python
+class LLMAdapter(ABC):
+    """Abstract interface for LLM providers."""
+
+    @abstractmethod
+    async def get_action(
+        self,
+        state: BenchmarkGameState,
+        history: list[Message],
+        available_actions: list[AvailableAction],
+    ) -> ActionResponse: ...
+
+    @abstractmethod
+    async def test_connection(self) -> bool: ...
+
+    @abstractmethod
+    def get_token_count(self, messages: list[Message]) -> int: ...
+
+    @abstractmethod
+    def get_model_info(self) -> dict[str, Any]: ...
+```
+
+**Additional classes in this file:**
+- `Message` — dataclass with `role: Literal["system", "user", "assistant"]` and `content: str`
+- `LLMError` — exception with `error_type` (timeout/rate_limit/api_error/parse_error) and `details`
+- `AdapterFactory` — factory function: `create_adapter(config: ModelConfig) -> LLMAdapter`
+
+**Design decisions:**
+- History is passed as `list[Message]` — adapter is stateless (orchestrator manages conversation)
+- `get_action` handles prompt construction internally (each adapter formats for its API)
+- All adapters use `httpx.AsyncClient` with configurable timeout
+- Rate limiting is NOT in the adapter — it's in the orchestrator's scheduling layer
+
+---
+
+#### 1.3 — OpenAI-Compatible Adapter (`terminus/benchmark/adapters/openai_compat.py`)
+
+Covers: GPT-4o, GPT-4o-mini, o1, o3, any OpenAI-compatible endpoint (Ollama, vLLM, LM Studio, Together, Groq).
+
+**API contract:**
+- Endpoint: `{base_url}/chat/completions`
+- Auth: `Authorization: Bearer {api_key}`
+- Request: `{"model": ..., "messages": [...], "temperature": 0.3, "max_tokens": 500, "response_format": {"type": "json_object"}}`
+- Response: `data["choices"][0]["message"]["content"]`
+
+**Implementation details:**
+- Use `response_format: {"type": "json_object"}` when available (GPT-4o, GPT-4o-mini)
+- Fall back to prompt-only JSON for models that don't support it (Ollama, older endpoints)
+- Token counting via `tiktoken` library (model-specific encoding: `cl100k_base` for GPT-4, `o200k_base` for GPT-4o)
+- For Ollama/local: skip auth header, use `http://localhost:11434/v1/chat/completions` default
+- Streaming not needed — we need the full response for parsing
+
+**Error handling:**
+- 429 → raise `LLMError("rate_limit", retry_after=headers["Retry-After"])`
+- 5xx → raise `LLMError("api_error", status_code=...)`
+- Timeout → raise `LLMError("timeout")`
+- Connection refused → raise `LLMError("connection_error")`
+
+---
+
+#### 1.4 — Anthropic Adapter (`terminus/benchmark/adapters/anthropic.py`)
+
+Covers: Claude Opus, Sonnet, Haiku via native Messages API.
+
+**API contract:**
+- Endpoint: `https://api.anthropic.com/v1/messages`
+- Auth: `x-api-key: {api_key}`, `anthropic-version: 2023-06-01`
+- Request: `{"model": ..., "system": ..., "messages": [...], "max_tokens": 500, "temperature": 0.3}`
+- Response: `data["content"][0]["text"]`
+
+**Key differences from OpenAI:**
+- System prompt is a top-level field, not a message
+- No native JSON mode — rely on prompt engineering + extraction
+- Token counting: character-based estimation (÷4 for English text) — Anthropic doesn't expose tokenizer
+- Context window: 200K tokens for Claude 3.5+, 100K for Claude 3
+
+**Implementation details:**
+- Separate system prompt from conversation messages (Anthropic API format)
+- Handle `overloaded` error (529) with backoff similar to 429
+- Handle `content_filter` stops — map to `LLMError("refusal")`
+
+---
+
+#### 1.5 — Google Generative AI Adapter (`terminus/benchmark/adapters/google.py`)
+
+Covers: Gemini 1.5 Pro, Gemini 1.5 Flash, Gemini 2.0.
+
+**API contract:**
+- Endpoint: `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`
+- Auth: `?key={api_key}` query parameter
+- Request: `{"contents": [...], "generationConfig": {"temperature": 0.3, "maxOutputTokens": 500, "responseMimeType": "application/json"}}`
+- Response: `data["candidates"][0]["content"]["parts"][0]["text"]`
+
+**Key differences:**
+- Auth via query param, not header
+- System instruction is a separate field: `"systemInstruction": {"parts": [{"text": ...}]}`
+- Native JSON mode via `responseMimeType: "application/json"` (Gemini 1.5+)
+- Token counting via `countTokens` API endpoint (free, accurate)
+- Conversation format: alternating `user`/`model` roles (not `assistant`)
+
+**Implementation details:**
+- Use `countTokens` endpoint for accurate pre-flight token budget checks
+- Handle `SAFETY` block reasons → map to `LLMError("refusal")`
+- Handle `RECITATION` block → retry with slightly rephrased prompt
+
+---
+
+#### 1.6 — Prompt Builder (`terminus/benchmark/prompt.py`)
+
+Builds the system prompt, turn messages, retry prompts, and state probe prompts.
+
+**Components:**
+- `build_system_prompt() -> str` — ~1200 token game rules (from [prompt-template.md](prompt-template.md))
+- `build_turn_message(state: BenchmarkGameState) -> str` — serialize state + available actions
+- `build_retry_prompt(error: str, attempt: int) -> str` — "Your response was invalid because X. Try again."
+- `build_probe_prompt(probe_type: str, state: BenchmarkGameState) -> str` — off-clock state probes
+
+**Design decisions:**
+- System prompt is static text (loaded once, included in every call)
+- Turn message serializes `BenchmarkGameState` to human-readable format (not raw JSON — LLMs perform better on structured text)
+- Include P2P trade offers in turn message: "Incoming trade offers: [Player X offers 20 food for 10 gold (expires in 5 turns)]"
+- Available actions are pre-filtered to affordable ones only (reduces LLM decision space)
+- History window: last N turns summarized as "Turn X: You chose BUILD farm. Result: success."
+
+**Token budget management:**
+- `estimate_tokens(text: str, model: str) -> int` — quick estimation without full tokenization
+- `truncate_history(messages: list[Message], max_tokens: int) -> list[Message]` — drop oldest messages first, keep system + current state intact
+- For `context_strategy="sliding"`: always keep system prompt + last 10 turns
+- For `context_strategy="full"`: keep everything until 90% of context window
+
+---
+
+#### 1.7 — JSON Extraction & Schema Coercion (`terminus/benchmark/response_parser.py`)
+
+Handles E1 (malformed JSON) and E2 (schema violation) from [error-handling.md](error-handling.md).
+
+**JSON extraction pipeline:**
+```
+Raw LLM text
+  → Strip markdown fences (```json ... ```)
+  → Strip natural language prefix/suffix (find first { and last })
+  → Fix trailing commas
+  → Fix single quotes → double quotes
+  → json.loads()
+  → Pydantic ActionResponse.model_validate()
+```
+
+**Schema coercion (soft fixes before retry):**
+- `action_type` case normalization: `"build"` → `"BUILD"`
+- Missing `reasoning` field → inject default `{"factors": [{"factor": "immediate_survival", "weight": 1.0}]}`
+- `params` as flat dict → wrap in correct typed model based on `action_type`
+- Worker allocation doesn't sum to population → proportionally scale
+
+**When coercion fails:**
+- Return `None` → orchestrator sends retry prompt with specific error
+- After max retries → fallback to PASS action, record as invalid turn
+
+**Functions:**
+- `extract_json(raw_text: str) -> dict | None`
+- `coerce_response(raw_dict: dict, state: BenchmarkGameState) -> ActionResponse | None`
+- `validate_action_params(action: ActionResponse, state: BenchmarkGameState) -> list[str]` — returns list of validation errors
+
+---
+
+#### 1.8 — Token Counting (`terminus/benchmark/tokens.py`)
+
+**Per-provider strategy:**
+
+| Provider | Method | Library |
+|----------|--------|---------|
+| OpenAI | Exact tokenization | `tiktoken` (cl100k_base / o200k_base) |
+| Anthropic | Character estimation (÷4) | None (no public tokenizer) |
+| Google | `countTokens` API call | `httpx` (API call) |
+| Ollama/local | Character estimation (÷4) | None |
+
+**Functions:**
+- `count_tokens(text: str, provider: str, model: str) -> int`
+- `count_messages_tokens(messages: list[Message], provider: str, model: str) -> int`
+- `get_encoding_for_model(model: str) -> str` — returns tiktoken encoding name
+
+**Design decisions:**
+- `tiktoken` is the only new dependency (lightweight, no native bindings needed)
+- Google's `countTokens` is async — called sparingly (cached for repeated system prompt)
+- Character estimation is a fallback, not primary — used only for providers without tokenizers
+- Token counts are recorded in `TurnSnapshot` for cost analysis in reports
+
+---
+
+### File Structure (final):
+
 ```
 terminus/benchmark/
-├── __init__.py
-├── agent.py              # Abstract LLMAdapter class + AdapterConfig
+├── __init__.py              # (existing — add re-exports)
+├── schemas.py               # NEW: All Pydantic models (BenchmarkConfig, BenchmarkGameState, ActionResponse, etc.)
+├── agent.py                 # NEW: Abstract LLMAdapter ABC, Message, LLMError, AdapterFactory
 ├── adapters/
-│   ├── __init__.py
-│   ├── openai_compat.py  # OpenAI-compatible adapter (+ Ollama, vLLM, LM Studio)
-│   ├── anthropic.py      # Direct Anthropic Messages API
-│   └── google.py         # Direct Google Generative AI
-├── schemas.py            # BenchmarkGameState, ActionResponse, BenchmarkConfig, etc.
-└── prompt.py             # System prompt builder, retry prompts, probe prompts
+│   ├── __init__.py          # NEW: Re-exports + adapter registry
+│   ├── openai_compat.py     # NEW: OpenAI/Ollama/vLLM/LM Studio adapter
+│   ├── anthropic.py         # NEW: Native Anthropic Messages API adapter
+│   └── google.py            # NEW: Google Generative AI adapter
+├── prompt.py                # NEW: System prompt builder, turn messages, retry prompts
+├── response_parser.py       # NEW: JSON extraction, schema coercion, validation
+├── tokens.py                # NEW: Token counting per provider
+├── orchestrator.py          # (existing — will be refactored in Phase 3 to use new adapters)
+├── mock_orchestrator.py     # (existing — unchanged)
+├── scorer.py                # (existing — unchanged)
+├── report.py                # (existing — unchanged)
+└── events.py                # (existing — unchanged)
 ```
 
 ### Dependencies:
-- `httpx` (already in project) for API calls
-- `tiktoken` for OpenAI token counting (new, lightweight)
-- No other new dependencies
+
+```toml
+# Add to pyproject.toml [project.dependencies]
+tiktoken >= 0.7.0    # OpenAI token counting (pure Python wheels available)
+```
+
+No other new dependencies — `httpx` and `pydantic` already in project.
+
+### Integration Points:
+
+1. **Existing orchestrator** (`orchestrator.py`): Currently has inline `LLMAdapter`. Phase 1 creates the proper interface; Phase 3 refactors the orchestrator to use it.
+2. **TUI benchmark setup** (`benchmark_setup.py`): Already collects provider/model/URL/key. Will pass to `AdapterFactory.create_adapter()`.
+3. **Config loading**: `BenchmarkConfig` model enables loading from JSON file via `--benchmark-config` CLI flag (Phase 6).
+
+### Testing Strategy:
+
+- **Unit tests** (`tests/test_benchmark_schemas.py`): Validate all Pydantic models serialize/deserialize correctly, validation rules trigger on bad input
+- **Unit tests** (`tests/test_response_parser.py`): Test JSON extraction edge cases (markdown fences, trailing commas, natural language wrapping, truncated JSON)
+- **Unit tests** (`tests/test_prompt_builder.py`): Verify prompt output structure, token budget enforcement, history truncation
+- **Integration tests** (`tests/test_adapters.py`): Mock httpx responses for each provider, verify correct API formatting
+- **No live API calls in CI** — all adapter tests use `httpx` mock/respx fixtures
+
+### Estimated Test Count: ~35-45 new tests
+
+### Acceptance Criteria:
+
+- [ ] `BenchmarkConfig` validates example JSON from schemas.md without error
+- [ ] `ActionResponse` correctly parses all example responses from schemas.md
+- [ ] Each adapter formats requests correctly for its provider's API spec
+- [ ] JSON extraction handles all E1 cases from error-handling.md
+- [ ] Schema coercion handles all E2 cases from error-handling.md
+- [ ] Token counting returns accurate counts (within 5%) for OpenAI models
+- [ ] `test_connection()` works for each adapter (mocked)
+- [ ] System prompt fits within 1500 tokens across all models
+- [ ] Full test suite passes (existing 233 + new ~40 = ~273 tests)
 
 ---
 
