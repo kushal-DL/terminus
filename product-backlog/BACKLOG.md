@@ -35,7 +35,8 @@
 | 9 | Packaging & Distribution | 9 | **9** | 0 | 0 |
 | 10 | Stretch Goals | 10 | 0 | 0 | 10 |
 | 11 | Developer Tools | 18 | **18** | 0 | 0 |
-| | **TOTAL** | **293** | **275** | **0** | **18** |
+| 12 | LLM Benchmark Suite | 42 | 0 | 0 | 42 |
+| | **TOTAL** | **335** | **275** | **0** | **60** |
 
 ---
 
@@ -645,6 +646,98 @@
 | ✅ | 11.4.8 | DevPanel: complete buildings — per selected player | Calls `POST /admin/complete-building` with player_id |
 | ✅ | 11.4.9 | DevPanel: full state viewer — all players resources/workers/buildings/rates | Read-only display, auto-refreshes |
 | ✅ | 11.4.10 | Dev mode hidden from non-host players — no badges or indicators | Host-only secret; admin gated by host token |
+
+---
+
+## Epic 12: LLM Benchmark Suite [P1]
+
+### 12.1 — LLM Agent Interface [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.1.1 | `BenchmarkGameState` Pydantic schema — JSON sent to LLMs per turn | resources, buildings, workers, market, catastrophe_warning, opponents, available_actions |
+| ⬜ | 12.1.2 | `ActionResponse` Pydantic schema — JSON received from LLMs | action, params, reasoning (structured factors + weights) |
+| ⬜ | 12.1.3 | `ReasoningFactors` schema — 12 predefined decision factors with weights | resource_bottleneck, long_term_growth, opponent_pressure, catastrophe_preparation, market_opportunity, efficiency_optimization, defensive_positioning, cooperative_opportunity, specialization_synergy, immediate_survival, information_gathering, risk_diversification |
+| ⬜ | 12.1.4 | Abstract `LLMAgent` base class — `async choose_action(state) -> ActionResponse` | Timeout, retry, validation interface |
+| ⬜ | 12.1.5 | OpenAI-compatible adapter — covers GPT, Claude (via proxy), Ollama, vLLM | Uses httpx, configurable endpoint/model/temperature/max_tokens |
+| ⬜ | 12.1.6 | Connection test method — validates API reachability with simple prompt | Returns latency + model name confirmation |
+| ⬜ | 12.1.7 | Token counting — tiktoken for OpenAI models, heuristic (chars÷4) for others | Input + output tokens per turn |
+
+### 12.2 — Built-in Opponents [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.2.1 | Random agent — uniform random from valid actions | Baseline floor (score = 0.0 in normalization) |
+| ⬜ | 12.2.2 | Greedy heuristic — always picks highest immediate-value action | Mid-floor reference agent |
+| ⬜ | 12.2.3 | Balanced heuristic — follows fixed optimal build order + allocation | Near-ceiling reference for scoring normalization |
+
+### 12.3 — Benchmark Orchestrator [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.3.1 | `BenchmarkConfig` Pydantic model — game count, speed, max turns, seeds, metrics, weights, rate limit | JSON/YAML loadable, presets (Balanced, Reliability, Strategy, Triage, Endurance, Precision) |
+| ⬜ | 12.3.2 | Speed multiplier module — divides all engine timers by multiplier (1×, 2×, 5×, 10×) | Build time, catastrophe interval, market tick — all scaled |
+| ⬜ | 12.3.3 | Headless game runner — instantiate engine directly (no FastAPI/WS overhead) | Direct function calls to game engine, seeded RNG |
+| ⬜ | 12.3.4 | Turn loop — send state to all agents simultaneously, collect responses, validate, apply | Respects rate limits, handles timeouts, logs invalid actions |
+| ⬜ | 12.3.5 | Game sequence manager — runs N games sequentially with seed progression | Stores results per game, reports progress |
+| ⬜ | 12.3.6 | Per-turn data recorder — snapshots full state + action + validation + timing + tokens | Stored in memory during game, serialized to JSON after |
+| ⬜ | 12.3.7 | Rate limit controller — optional per-minute or per-concurrent cap with queue | Host-configurable, can be disabled for self-hosted models |
+| ⬜ | 12.3.8 | Scripted disruption injector — engineers catastrophes/market shocks at fixed turns | For reproducible flexibility testing |
+
+### 12.4 — Metrics Engine [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.4.1 | Abstract `MetricScorer` base class — `score(recording) -> DimensionResult` | Returns score (0-1), sub-scores, reported values dict |
+| ⬜ | 12.4.2 | Tier 1 Planning metrics (6): build order, anticipation, market timing, catastrophe prep, housing, stockpile | Raw game measurements |
+| ⬜ | 12.4.3 | Tier 1 Numerical metrics (6): invalid actions, worker sums, over-capacity, timing, trade math, feasibility | Raw game measurements |
+| ⬜ | 12.4.4 | Tier 1 Flexibility metrics (7): recovery speed, reallocation, repair priority, market adapt, starvation, defense learn, distribution shift | Raw game measurements |
+| ⬜ | 12.4.5 | Tier 2 Dimension 1: Multi-Decision Coherence Decay — inflection point detection, decay rate | From reasoning factors consistency + trigger correlation |
+| ⬜ | 12.4.6 | Tier 2 Dimension 2: Applied Arithmetic Under Cognitive Load — load-weighted accuracy | From all numerical metrics + load factor computation |
+| ⬜ | 12.4.7 | Tier 2 Dimension 3: Priority Triage Under Competing Constraints — expert ordering comparison | From multi-constraint event detection + action priority |
+| ⬜ | 12.4.8 | Tier 2 Dimension 4: Compounding Error Recognition — detection lead time | From resource trajectory analysis + corrective action timing |
+| ⬜ | 12.4.9 | Tier 2 Dimension 5: Justified Pivot vs Inconsistency — signal-to-noise ratio | From strategy change detection + trigger correlation |
+| ⬜ | 12.4.10 | Tier 2 Dimension 6: Graceful Degradation Curve — failure mode classification | From per-turn quality curve fitting (linear, cliff, oscillating, stable, improving) |
+| ⬜ | 12.4.11 | Tier 2 Dimension 7: Opportunity Cost Awareness — optimality gap measurement | From action value computation + 20-tick lookahead simulator |
+| ⬜ | 12.4.12 | Composite scorer — weighted aggregation with 6 presets | Balanced, Reliability, Strategy, Triage, Endurance, Precision |
+| ⬜ | 12.4.13 | Trend analysis — linear regression across N games, classification (Improving/Consistent/Degrading/Volatile) | Requires scipy or numpy for regression |
+| ⬜ | 12.4.14 | LLM archetype classification — cross-dimension correlation analysis | Strategist, Accountant, Firefighter, Marathon Runner, All-Rounder, Specialist |
+
+### 12.5 — Results & HTML Export [P0]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.5.1 | Results aggregation module — per-game scores, per-dimension breakdowns, confidence intervals | 95% CI on all scores |
+| ⬜ | 12.5.2 | Jinja2 HTML template — self-contained report with embedded Chart.js | CDN for Chart.js, single-file output |
+| ⬜ | 12.5.3 | Score progression line chart (per model across games) | Chart.js line chart, one series per LLM |
+| ⬜ | 12.5.4 | Per-dimension grouped bar chart | 7 dimensions × N models, color-coded |
+| ⬜ | 12.5.5 | Summary ranking table — model, composite score, trend, consistency | Sortable, with trend badges |
+| ⬜ | 12.5.6 | Tier 1 detail section — expandable per-game sub-metric breakdowns | Collapsible HTML sections |
+| ⬜ | 12.5.7 | Tier 3 mapping section — agentic workflow predictions per model | Table with production implications |
+| ⬜ | 12.5.8 | Archetype classification display — radar chart per model | Spider chart showing dimension profile |
+| ⬜ | 12.5.9 | JSON companion export — structured data matching HTML content | `results.json` alongside `report.html` |
+| ⬜ | 12.5.10 | Export CLI — `terminus --benchmark --config FILE` produces output in `./benchmark-results/` | Creates directory, writes HTML + JSON |
+
+### 12.6 — CLI & Integration [P1]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.6.1 | `--benchmark` CLI flag in `__main__.py` | Launches benchmark mode instead of game |
+| ⬜ | 12.6.2 | `--benchmark-config PATH` — load config from JSON/YAML file | Validates config, fails fast on missing fields |
+| ⬜ | 12.6.3 | Interactive TUI setup screen — configure models, games, speed, metrics when no config file | Textual screen with form inputs |
+| ⬜ | 12.6.4 | Progress display — live terminal output during benchmark (game N/M, turn X/Y, current scores) | Simple print-based, not full TUI |
+| ⬜ | 12.6.5 | `[benchmark]` optional dependency group in `pyproject.toml` | jinja2, tiktoken |
+
+### 12.7 — Testing & Verification [P1]
+
+| Status | ID | Task | Notes |
+|--------|-----|------|-------|
+| ⬜ | 12.7.1 | Unit tests: schemas validation (valid + invalid action responses) | `tests/benchmark/test_schemas.py` |
+| ⬜ | 12.7.2 | Unit tests: metric scorers (known inputs → expected scores) | `tests/benchmark/test_metrics.py` |
+| ⬜ | 12.7.3 | Unit tests: orchestrator (mock LLM, verify turn loop) | `tests/benchmark/test_orchestrator.py` |
+| ⬜ | 12.7.4 | Unit tests: HTML export (template renders without error) | `tests/benchmark/test_export.py` |
+| ⬜ | 12.7.5 | Integration test: 1 game, Random vs Greedy, all metrics, verify HTML output | Smoke test with fixture config |
+| ⬜ | 12.7.6 | Sanity check: Random agent scores lower than Greedy on all dimensions | Validates scoring logic direction |
 
 ---
 

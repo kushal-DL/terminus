@@ -1,177 +1,227 @@
 # LLM Benchmark — Implementation Plan
 
-This document outlines the technical implementation phases. **No code changes until approved.**
+This document outlines the technical implementation phases, aligned with the 8-dimension metric framework and the product backlog (Epic 12). **No code changes until approved.**
+
+---
+
+## Phase Overview
+
+| Phase | Epic 12 Section | Files | Complexity | MVP? |
+|-------|-----------------|-------|------------|------|
+| 1. Agent Interface | 12.1 | ~7 | Medium | ✓ |
+| 2. Built-in Opponents | 12.2 | ~7 | Low | Partial |
+| 3. Orchestrator | 12.3 | ~6 | High | ✓ |
+| 4. Metrics Engine | 12.4 | ~12 | High | Partial |
+| 5. Results & Export | 12.5 | ~6 | Medium | Partial |
+| 6. CLI & TUI Integration | 12.6 | ~6 | Medium | Partial |
+| 7. Testing & Verification | 12.7 | ~8 | Medium | ✓ |
+| **Total** | — | **~52** | — | — |
 
 ---
 
 ## Phase 1: LLM Agent Interface
 
-**Goal:** Define the API contract between the game and LLM agents.
+**Goal:** Define the communication contract between the orchestrator and LLM models.
+
+**Reference docs:** [schemas.md](schemas.md), [prompt-template.md](prompt-template.md)
 
 ### Tasks:
-1. Define JSON schema for game state representation sent to LLMs
-2. Define JSON schema for action responses from LLMs
-3. Create LLM adapter interface (abstract class) supporting:
-   - OpenAI-compatible API (covers GPT, Claude via proxy, local models via LM Studio/Ollama)
-   - Direct Anthropic API
-   - Direct Google Generative AI API
-4. Implement connection testing (ping with simple prompt)
-5. Implement retry/timeout logic (LLMs can be slow or rate-limited)
-6. Token counting for Context Window metric
+1. Implement `BenchmarkGameState` Pydantic model (what the LLM sees each turn)
+2. Implement `ActionResponse` Pydantic model (what the LLM returns — action + structured reasoning)
+3. Create abstract `LLMAdapter` interface with:
+   - `async get_action(state: BenchmarkGameState, history: list[Message]) → ActionResponse`
+   - `async test_connection() → bool`
+   - `get_token_count(messages: list[Message]) → int`
+4. Implement OpenAI-compatible adapter (covers GPT-4o, Claude via proxy, local via Ollama/vLLM/LM Studio)
+5. Implement direct Anthropic adapter (native Messages API)
+6. Implement direct Google Generative AI adapter (Gemini)
+7. Implement JSON extraction + schema coercion logic (see [error-handling.md](error-handling.md) §E1/E2)
+8. Implement token counting per adapter (tiktoken for OpenAI, character estimation for others)
 
 ### New Files:
 ```
 terminus/benchmark/
 ├── __init__.py
-├── agent.py           # Abstract LLMAgent class
+├── agent.py              # Abstract LLMAdapter class + AdapterConfig
 ├── adapters/
 │   ├── __init__.py
-│   ├── openai_compat.py   # OpenAI-compatible adapter
-│   ├── anthropic.py       # Direct Anthropic adapter
-│   └── google.py          # Direct Google AI adapter
-└── schemas.py         # Pydantic models for game state / action JSON
+│   ├── openai_compat.py  # OpenAI-compatible adapter (+ Ollama, vLLM, LM Studio)
+│   ├── anthropic.py      # Direct Anthropic Messages API
+│   └── google.py         # Direct Google Generative AI
+├── schemas.py            # BenchmarkGameState, ActionResponse, BenchmarkConfig, etc.
+└── prompt.py             # System prompt builder, retry prompts, probe prompts
 ```
 
 ### Dependencies:
 - `httpx` (already in project) for API calls
-- `tiktoken` or equivalent for token counting
-- No new heavy dependencies
+- `tiktoken` for OpenAI token counting (new, lightweight)
+- No other new dependencies
 
 ---
 
-## Phase 2: Benchmark Orchestrator
+## Phase 2: Built-in Opponents
 
-**Goal:** Run multiple games with LLM agents, collect data.
+**Goal:** Provide standardized opponents for consistent benchmarking across 6 archetypes.
 
-### Tasks:
-1. Create orchestrator that:
-   - Instantiates game server in "headless" mode (no TUI, API only)
-   - Connects LLM agents as players
-   - Manages turn loop (send state → get action → validate → apply)
-   - Applies speed multiplier to all timing
-   - Seeds RNG for reproducibility
-2. Per-turn data recording:
-   - Full game state snapshot
-   - LLM's raw response (action + reasoning)
-   - Validation result (valid/invalid action)
-   - Time taken for LLM to respond
-   - Token count of prompt + response
-3. Game result aggregation
-
-### New Files:
-```
-terminus/benchmark/
-├── orchestrator.py    # Main benchmark runner
-├── recorder.py        # Per-turn data collection
-├── config.py          # BenchmarkConfig pydantic model
-└── speed.py           # Speed multiplier logic
-```
-
----
-
-## Phase 3: Metrics Engine
-
-**Goal:** Score LLMs across the 6 dimensions.
+**Reference docs:** [metrics.md](metrics.md) §5 (Opponent-Aware Metrics), [engine-integration.md](engine-integration.md)
 
 ### Tasks:
-1. Implement each metric scorer as an independent class
-2. Each scorer receives the full game recording and produces a 0.0–1.0 score
-3. Planning Horizon scorer: requires "optimal play" reference (heuristic-based approximation)
-4. Numerical Grounding scorer: compares stated reasoning to actual math
-5. State Tracking scorer: injects state queries at checkpoints, compares responses
-6. Flexibility scorer: detects disruption events, measures response quality
-7. Game Theory scorer: analyzes opponent-aware behavior patterns
-8. Context Window scorer: measures quality degradation over game length
-9. Composite scorer: weighted aggregation with configurable weights
-
-### New Files:
-```
-terminus/benchmark/
-├── metrics/
-│   ├── __init__.py
-│   ├── base.py              # Abstract MetricScorer
-│   ├── planning.py          # Planning Horizon
-│   ├── numerical.py         # Numerical Grounding
-│   ├── state_tracking.py    # State Tracking Fidelity
-│   ├── flexibility.py       # Strategic Flexibility
-│   ├── game_theory.py       # Game-Theoretic Sophistication
-│   ├── context_window.py    # Context Window Utilization
-│   └── composite.py         # Weighted composite scorer
-```
-
----
-
-## Phase 4: Results UI
-
-**Goal:** TUI screens for configuration and results viewing.
-
-### Tasks:
-1. LLM configuration screen (add/edit/test models)
-2. Test configuration screen (game count, speed, metrics, weights)
-3. Live progress screen (real-time scores, turn counter, ETA)
-4. Results dashboard (scrollable vertical charts)
-5. ASCII chart rendering (line charts, bar charts, tables)
-6. Export functionality (JSON, CSV, Markdown)
-
-### New Files:
-```
-terminus/client/screens/
-├── benchmark_setup.py      # Screens 1 & 2 (config)
-├── benchmark_progress.py   # Screen 3 (live monitoring)
-├── benchmark_results.py    # Screen 4 (charts/tables)
-└── benchmark_export.py     # Screen 5 (export dialog)
-
-terminus/client/widgets/
-├── ascii_chart.py          # Reusable ASCII line chart widget
-└── metric_table.py         # Colored metric comparison table
-```
-
----
-
-## Phase 5: Built-in Opponents
-
-**Goal:** Provide standardized opponents for consistent benchmarking.
-
-### Tasks:
-1. Random agent (uniform random from valid actions)
-2. Greedy heuristic (always picks highest immediate value)
-3. Rush strategy (prioritize military/expansion)
-4. Turtle strategy (prioritize defense/economy)
-5. Mirror agent (copies opponent's last action)
-6. Adversarial agent (simple counter-strategy rules)
+1. Define abstract `BuiltInAgent` interface: `choose_action(state: dict) → (ActionType, dict)`
+2. **Random agent** — uniform random from valid actions (baseline)
+3. **Greedy agent** — always picks highest immediate-value action (score delta heuristic)
+4. **Balanced agent** — fixed optimal build order + smart worker allocation (textbook play)
+5. **Rush agent** — aggressive early expansion, population maximization, ignores defense
+6. **Turtle agent** — heavy defense, slow growth, strong late-game economy
+7. **Adversarial agent** — observes LLM patterns over games, then exploits weaknesses
 
 ### New Files:
 ```
 terminus/benchmark/
 ├── opponents/
 │   ├── __init__.py
+│   ├── base.py              # Abstract BuiltInAgent
 │   ├── random_agent.py
 │   ├── greedy_agent.py
+│   ├── balanced_agent.py
 │   ├── rush_agent.py
 │   ├── turtle_agent.py
-│   ├── mirror_agent.py
 │   └── adversarial_agent.py
 ```
 
 ---
 
-## Phase 6: Data Export & Analysis
+## Phase 3: Orchestrator
 
-**Goal:** Make results portable and analyzable.
+**Goal:** Run benchmark games end-to-end — manage turn loop, apply speed multiplier, handle errors, record data.
+
+**Reference docs:** [engine-integration.md](engine-integration.md), [error-handling.md](error-handling.md)
 
 ### Tasks:
-1. JSON export (full fidelity — every turn, every action, every metric)
-2. CSV export (summary — one row per model per game)
-3. Markdown export (human-readable report with inline ASCII charts)
-4. Optional: HTML export with interactive charts (stretch goal)
-5. Statistical analysis: significance tests, confidence intervals, effect sizes
+1. Create `BenchmarkOrchestrator`:
+   - Initialize GameEngine in headless mode (no persistence, no WebSocket)
+   - Add LLM player + opponent player
+   - Skip lobby/setup phase (programmatic assignment)
+   - Run synchronous turn loop (state → prompt → response → validate → apply → tick)
+   - Apply speed multiplier to catastrophe schedule
+   - Seed RNG for reproducibility
+2. Create `StateConverter`:
+   - Engine `get_player_state()` dict → `BenchmarkGameState` schema
+   - Compute available actions (filtered to affordable)
+   - Track market rolling averages for context
+3. Create `TurnRecorder`:
+   - Store per-turn `TurnSnapshot` (state, response, validity, latency, tokens)
+   - Finalize into `GameRecording` with scores
+4. Create `ErrorHandler`:
+   - JSON extraction + retry logic (max 3 retries)
+   - Schema coercion + retry (max 2)
+   - Timeout handling (30s default, 1 retry)
+   - Rate limit queueing with exponential backoff
+   - Disqualification tracking (10 consecutive invalid = DQ)
+5. Create `SpeedController`:
+   - Modify catastrophe schedule based on multiplier
+   - Track effective turn mapping
+6. Implement concurrent LLM queries (asyncio.gather for multiple agents per tick)
 
 ### New Files:
 ```
 terminus/benchmark/
+├── orchestrator.py       # Main benchmark runner (turn loop, game management)
+├── state_converter.py    # Engine state → BenchmarkGameState
+├── recorder.py           # TurnRecorder + GameRecording builder
+├── error_handler.py      # Retry logic, DQ tracking, error classification
+├── speed.py              # Speed multiplier + catastrophe schedule compression
+└── config.py             # BenchmarkConfig, ErrorHandlingConfig, TimeoutConfig
+```
+
+---
+
+## Phase 4: Metrics Engine
+
+**Goal:** Score LLMs across 8 cognitive dimensions using 31 Tier 1 game metrics.
+
+**Reference docs:** [metrics.md](metrics.md) (full specification)
+
+### Tasks:
+1. Create abstract `MetricScorer` base: receives `GameRecording`, returns `DimensionScore`
+2. Implement Tier 1 collectors (31 game metrics computed from turn data):
+   - Planning metrics (6): build order, worker anticipation, market timing, catastrophe prep, housing, stockpile
+   - Numerical metrics (6): invalid rate, worker sum, over-capacity, production timing, trade math, multi-resource
+   - Flexibility metrics (7): recovery speed, worker realloc, repair priority, market adapt, starvation response, defense learning, action shift
+   - State probe metrics (4): building recall, resource awareness, strategy consistency, history recall
+   - Opponent-aware metrics (5): win rate, exploitation resistance, counter-detection, cooperation, manipulation detection
+   - Context pressure metrics (3): per-quartile quality, historical reference rate, collapse point
+3. Implement Tier 2 dimension scorers (8):
+   - `coherence.py` — Multi-Decision Coherence + State Fidelity (Dim 1)
+   - `arithmetic.py` — Applied Arithmetic Under Cognitive Load (Dim 2)
+   - `triage.py` — Priority Triage Under Competing Constraints (Dim 3)
+   - `error_recognition.py` — Compounding Error Recognition (Dim 4)
+   - `pivot.py` — Justified Pivot vs Inconsistency (Dim 5)
+   - `degradation.py` — Graceful Degradation + Context Window (Dim 6)
+   - `opportunity.py` — Opportunity Cost Awareness (Dim 7)
+   - `game_theory.py` — Game-Theoretic Sophistication (Dim 8)
+4. Implement composite scorer: weighted aggregation with 9 presets
+5. Implement trend analysis: linear regression, classification (Improving/Consistent/Degrading/Volatile)
+6. Implement archetype classification: cross-dimension correlation → 8 archetype labels
+7. Implement Tier 3 mapping: dimension scores → agentic workflow predictions
+8. Implement optimal action evaluator (for Opportunity Cost): deterministic 20-tick simulator
+
+### New Files:
+```
+terminus/benchmark/
+├── metrics/
+│   ├── __init__.py
+│   ├── base.py                # Abstract MetricScorer, DimensionScore model
+│   ├── tier1/
+│   │   ├── __init__.py
+│   │   ├── planning.py        # 6 planning metrics
+│   │   ├── numerical.py       # 6 numerical metrics
+│   │   ├── flexibility.py     # 7 flexibility metrics
+│   │   ├── state_probes.py    # 4 state probe metrics
+│   │   ├── opponent.py        # 5 opponent-aware metrics
+│   │   └── context.py         # 3 context pressure metrics
+│   ├── tier2/
+│   │   ├── __init__.py
+│   │   ├── coherence.py       # Dimension 1
+│   │   ├── arithmetic.py      # Dimension 2
+│   │   ├── triage.py          # Dimension 3
+│   │   ├── error_recognition.py  # Dimension 4
+│   │   ├── pivot.py           # Dimension 5
+│   │   ├── degradation.py     # Dimension 6
+│   │   ├── opportunity.py     # Dimension 7
+│   │   └── game_theory.py     # Dimension 8
+│   ├── composite.py           # Weighted composite scorer + 9 presets
+│   ├── trend.py               # Trend analysis + classification
+│   ├── archetypes.py          # Cross-dimension archetype classification
+│   └── optimal_evaluator.py   # Deterministic simulator for opportunity cost
+```
+
+---
+
+## Phase 5: Results & Export
+
+**Goal:** Display results in TUI and export in multiple formats.
+
+### Tasks:
+1. Create `BenchmarkResult` aggregator (per-model scores, per-dimension, trends, archetypes)
+2. JSON export — full fidelity (every turn, every action, every metric, per Pydantic schema)
+3. HTML export — interactive report with:
+   - Dimension radar charts (per model)
+   - Score progression line charts
+   - Head-to-head comparison tables
+   - Archetype badges
+   - Drill-down to individual games/turns
+4. CSV export — one row per model per game, dimension scores as columns
+5. Markdown export — human-readable summary with inline tables
+6. Statistical analysis: Mann-Whitney U, Kruskal-Wallis, confidence intervals, effect sizes
+
+### New Files:
+```
+terminus/benchmark/
+├── results.py             # BenchmarkResult aggregator
 ├── export/
 │   ├── __init__.py
 │   ├── json_export.py
+│   ├── html_export.py     # Jinja2 templates + embedded charts
 │   ├── csv_export.py
 │   ├── markdown_export.py
 │   └── statistics.py      # Significance tests, CI calculations
@@ -179,16 +229,64 @@ terminus/benchmark/
 
 ---
 
-## Phase 7: CLI & Menu Integration
+## Phase 6: CLI & TUI Integration
 
-**Goal:** Wire everything into the existing game.
+**Goal:** Wire benchmark into the existing game interface.
 
 ### Tasks:
-1. Add "LLM Benchmark" to main menu
-2. Add `--benchmark` CLI flag
-3. Add `--benchmark-config <path>` for headless/CI runs
-4. Store API keys in OS keyring (not config files)
-5. Add benchmark results to a local SQLite table for historical comparison
+1. Add "LLM Benchmark" to main TUI menu
+2. Create benchmark setup screen (model config, test params, weight presets)
+3. Create live progress screen (turn counter, error rates, live scores, DQ warnings)
+4. Create results dashboard screen (radar charts, trends, archetypes, comparison)
+5. Create export dialog (format selection, path)
+6. Add `--benchmark` CLI flag for headless runs
+7. Add `--benchmark-config <path.json>` for CI/automation
+8. Secure API key handling (environment variables or OS keyring)
+
+### New Files:
+```
+terminus/client/screens/
+├── benchmark_setup.py       # Model config + test params
+├── benchmark_progress.py    # Live monitoring
+├── benchmark_results.py     # Charts + tables + archetypes
+└── benchmark_export.py      # Export dialog
+
+terminus/client/widgets/
+├── radar_chart.py           # ASCII radar chart widget
+├── dimension_table.py       # Colored dimension comparison table
+└── progress_bar.py          # Benchmark-specific progress display
+```
+
+---
+
+## Phase 7: Testing & Verification
+
+**Goal:** Ensure correctness of metrics, integration, and edge cases.
+
+### Tasks:
+1. Unit tests for each Tier 1 metric calculator (known inputs → expected scores)
+2. Unit tests for each Tier 2 dimension scorer (mocked Tier 1 → expected composites)
+3. Integration test: headless game with mock LLM (scripted responses) → full pipeline
+4. Integration test: real OpenAI-compatible API (Ollama local) → end-to-end
+5. Regression tests: fixed seed games produce identical recordings
+6. Edge case tests: DQ triggers, rate limit aborts, context overflow
+7. Performance tests: 100-turn game completes in <5 min with local model
+8. Validation: Random agent scores near 0, Greedy agent scores ~0.3–0.5 (sanity check)
+
+### New Files:
+```
+tests/benchmark/
+├── __init__.py
+├── test_schemas.py          # Schema validation, serialization
+├── test_adapters.py         # Adapter mock tests
+├── test_orchestrator.py     # Turn loop, error handling
+├── test_metrics_tier1.py    # All 31 Tier 1 metrics
+├── test_metrics_tier2.py    # All 8 dimension scorers
+├── test_composite.py        # Weighted scoring, presets, archetypes
+├── test_opponents.py        # Built-in agent correctness
+├── test_headless.py         # Full headless integration
+└── test_export.py           # Export format validation
+```
 
 ---
 
@@ -198,122 +296,84 @@ terminus/benchmark/
 |---------|---------|---------------------|
 | httpx | LLM API calls | ✓ Yes |
 | pydantic | Config/schema validation | ✓ Yes |
-| aiosqlite | Results storage | ✓ Yes |
+| aiosqlite | Results storage (optional) | ✓ Yes |
 | tiktoken | Token counting (OpenAI models) | ✗ New |
-| keyring | Secure API key storage | ✗ New |
+| jinja2 | HTML report templates | ✗ New |
 | scipy | Statistical tests (Mann-Whitney, etc.) | ✗ New (optional) |
-
----
-
-## Estimated Scope
-
-| Phase | Files | Complexity |
-|-------|-------|-----------|
-| 1. Agent Interface | ~6 | Medium |
-| 2. Orchestrator | ~5 | High |
-| 3. Metrics Engine | ~9 | High |
-| 4. Results UI | ~6 | Medium |
-| 5. Opponents | ~7 | Low |
-| 6. Export | ~5 | Low |
-| 7. Integration | ~3 | Low |
-| **Total** | **~41** | — |
+| keyring | Secure API key storage | ✗ New (optional) |
 
 ---
 
 ## Decisions (Resolved)
 
-### 1. Turn Mode: Simultaneous (Real-Time)
+### 1. Turn Mode: Synchronous Manual Advancement
 
-LLMs play simultaneously. All agents receive game state at the same time and submit actions within a turn window. This tests real-time strategic thinking and avoids giving later players an information advantage. The turn window is configurable and scales with the game speed multiplier.
+The orchestrator controls tick advancement explicitly — no real-time timer, no sleep. All agents receive state simultaneously, submit actions, then the tick advances. This eliminates timing variance between models. See [engine-integration.md](engine-integration.md) for details.
 
-### 2. Async Tournament Brackets: Yes
+### 2. Headless Mode (Direct Method Calls)
 
-The benchmark supports overnight/unattended tournament runs:
-- Host configures a bracket (round-robin, elimination, or Swiss-system)
-- Games run sequentially or in parallel (configurable)
-- Progress is persisted to SQLite — can resume after interruption
-- Results are available when the host returns
-- Optional: email/webhook notification on completion
+No FastAPI/WebSocket layer. The orchestrator calls `GameEngine` methods directly:
+- `get_player_state()` → state dict
+- `handle_action()` → validate + apply
+- `_tick()` → advance game
 
-### 3. Public Leaderboard API: Yes
+This eliminates HTTP overhead and makes the benchmark purely CPU + LLM-API bound.
 
-A public API endpoint allows hosts to submit benchmark results:
-- Submission includes: model name, version, benchmark config hash, metric scores, game count
-- Server validates result integrity (config hash must match a known standard benchmark preset)
-- Leaderboard viewable at a public URL
-- Opt-in only — results are never submitted without explicit host action
-- Anti-gaming: standard benchmark presets with fixed seeds required for leaderboard submissions
+### 3. Structured Reasoning (Hybrid Method)
 
-### 4. Rate Limiting: Host-Configurable (Optional)
-
-The host can set a common rate limit that applies to all LLM API calls:
-
-| Setting | Behavior |
-|---------|----------|
-| No limit (default for self-hosted) | Fire requests as fast as the game loop allows |
-| Requests/minute cap | Queue actions, delay turns if limit would be exceeded |
-| Concurrent request cap | Limit parallel API calls across all agents |
-| Per-model override | Different limits per model (e.g., cloud API = 60rpm, local vLLM = unlimited) |
-
-This accommodates both cloud APIs with strict rate limits and self-hosted vLLM/Ollama instances with no limits. When rate-limited, the orchestrator slows the game loop rather than dropping actions.
-
-### 5. Reasoning: Hybrid Structured Method
-
-Instead of free-text reasoning (expensive, hard to evaluate) or no reasoning (loses metric signal), we use a **structured hybrid approach**:
-
-The LLM selects from a predefined list of **decision factors** and assigns weights indicating how much each factor influenced the decision:
-
-```json
-{
-  "action": "build",
-  "params": {"building_type": "solar_array"},
-  "reasoning": {
-    "factors": [
-      {"factor": "resource_bottleneck", "weight": 0.5},
-      {"factor": "long_term_growth", "weight": 0.3},
-      {"factor": "opponent_pressure", "weight": 0.1},
-      {"factor": "catastrophe_preparation", "weight": 0.1}
-    ],
-    "primary_goal": "energy_production"
-  }
-}
-```
-
-**Available decision factors** (predefined list the LLM selects from):
-- `resource_bottleneck` — Addressing a resource shortage
-- `long_term_growth` — Investing in future capacity
-- `opponent_pressure` — Responding to opponent's actions
-- `catastrophe_preparation` — Hedging against disasters
-- `market_opportunity` — Exploiting favorable prices
-- `efficiency_optimization` — Improving resource conversion rates
-- `defensive_positioning` — Protecting existing assets
-- `cooperative_opportunity` — Pursuing mutual benefit with another player
-- `specialization_synergy` — Leveraging specialization bonuses
-- `immediate_survival` — Preventing colony collapse
-- `information_gathering` — Acting to learn about game state
-- `risk_diversification` — Spreading investment across areas
-
-**Benefits:**
-- Cheap (structured output, minimal tokens)
+The LLM selects from 12 predefined decision factors and assigns weights. This is:
+- Cheap (minimal tokens vs free-text)
 - Consistent across models (same vocabulary)
-- Directly feeds metrics (Planning Horizon can check if "long_term_growth" was selected when optimal; Flexibility can check if factor weights shift after disruptions)
-- Weights reveal the LLM's "thought process" without requiring free text parsing
+- Directly feeds metrics (Coherence tracks factor shifts; Pivot checks if shifts are triggered)
 
-### 6. Minimum Viable Version (MVP)
+See [prompt-template.md](prompt-template.md) for full factor list.
 
-**MVP = Phase 1 + Phase 2 + Simplified Phase 3 + Basic Phase 4**
+### 4. Available Actions: Filtered to Affordable
+
+The prompt includes ONLY actions the player can currently afford. This reduces noise (model doesn't need to verify affordability) but still tests arithmetic (quantities and multi-resource interactions are NOT pre-computed).
+
+### 5. Temperature: Fixed 0.3
+
+All models use temperature=0.3 for consistency + some diversity. Configurable but fixed across models in a single benchmark run to ensure fair comparison.
+
+### 6. Context Strategy: Auto-Select
+
+- Models with 128K+ context: full conversation history
+- Models with <128K: sliding window (system prompt + last N turns)
+
+Configurable override available.
+
+### 7. Speed Multiplier: Compresses Catastrophes Only
+
+Does NOT reduce tick count. Divides catastrophe scheduling so the same 100 turns encounter more disruption events. Production, consumption, and market mechanics remain per-tick unchanged.
+
+### 8. State Probes: Off-Clock
+
+At turns 10/25/50/75/100, the benchmark pauses, sends 4 structured queries, collects state recall data. These do NOT consume a game turn and are NOT included in the model's conversation history for subsequent turns.
+
+### 9. Opponent Depth: Configurable
+
+- **Quick** (MVP): Random + Greedy + Balanced (3 × N games)
+- **Standard**: All 6 archetypes (6 × N games, recommended)
+- **Deep**: Standard + repeated adversarial with adaptation (8 × N games)
+
+---
+
+## Minimum Viable Version (MVP)
+
+**MVP = Phase 1 + Phase 2 (partial) + Phase 3 + Phase 4 (partial) + Phase 7**
 
 | Phase | MVP Scope | Deferred to Post-MVP |
 |-------|-----------|---------------------|
-| Phase 1 | OpenAI-compatible adapter only, basic schema | Anthropic/Google direct adapters |
-| Phase 2 | Sequential games, fixed seeds, speed multiplier | Parallel games, bracket system |
-| Phase 3 | 3 metrics (Planning, Numerical, Flexibility) | State Tracking, Game Theory, Context Window |
-| Phase 4 | Summary table + score progression chart | Full scrollable dashboard, radar charts |
-| Phase 5 | Random + Greedy agents only | Rush, Turtle, Mirror, Adversarial |
-| Phase 6 | JSON export only | CSV, Markdown, HTML |
-| Phase 7 | CLI flag `--benchmark` | Menu integration, keyring |
+| Phase 1 | All adapters, full schema | — (complete) |
+| Phase 2 | Random + Greedy + Balanced only | Rush, Turtle, Adversarial |
+| Phase 3 | Full orchestrator, error handling, recording | — (complete) |
+| Phase 4 | Dims 1–4 + composite scorer | Dims 5–8 (require multiple opponents), archetypes, Tier 3 |
+| Phase 5 | JSON export + summary table | HTML, CSV, Markdown, statistics |
+| Phase 6 | `--benchmark` CLI flag only | Full TUI screens, menu integration |
+| Phase 7 | Core tests (schemas, orchestrator, Dims 1–4) | Full test suite |
 
-**MVP delivers:** Run N games with 2+ LLMs via OpenAI-compatible API, score on 3 dimensions, show results table and line chart, export as JSON.
+**MVP delivers:** Run N games with LLM via any adapter against 3 opponents, score on 4 dimensions (Coherence, Arithmetic, Triage, Error Recognition), show JSON results + summary table via CLI.
 
 ---
 
@@ -321,8 +381,22 @@ The LLM selects from a predefined list of **decision factors** and assigns weigh
 
 | Milestone | Adds |
 |-----------|------|
-| v0.1 (MVP) | Core benchmarking, 3 metrics, basic UI |
-| v0.2 | All 6 metrics, full results dashboard, CSV/MD export |
-| v0.3 | Tournament brackets, async overnight runs, all opponent types |
-| v0.4 | Public leaderboard API, submission/validation |
-| v0.5 | Direct Anthropic/Google adapters, HTML reports, CI integration |
+| **v0.1 (MVP)** | Core benchmarking, 4 dimensions, 3 opponents, JSON export, CLI |
+| **v0.2** | All 8 dimensions, all 6 opponents, composite scoring + presets |
+| **v0.3** | Full TUI (setup, progress, results screens), HTML export, archetypes |
+| **v0.4** | Trend analysis, statistical significance, CSV/Markdown export |
+| **v0.5** | Deep opponent mode (adversarial adaptation), Tier 3 agentic predictions |
+| **v0.6** | Public leaderboard API, CI integration, overnight tournament brackets |
+
+---
+
+## Estimated Runtimes
+
+| Configuration | Games | Time per Game | Total Estimate |
+|---|---|---|---|
+| MVP (1 model, 3 opponents, 10 games each) | 30 | ~3 min | ~90 min |
+| Standard (2 models, 6 opponents, 10 games) | 120 | ~3 min | ~6 hours |
+| Deep (3 models, 8 opponents, 30 games) | 720 | ~3 min | ~36 hours |
+| Local model (Ollama, ~300ms/turn) | 30 | ~45 sec | ~22 min |
+
+Parallelization across independent games can significantly reduce wall-clock time for multi-model benchmarks.

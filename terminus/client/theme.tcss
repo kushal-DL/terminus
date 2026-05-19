@@ -457,3 +457,212 @@ ResourceBar.resource-depleted {
 .screen-transition {
     border: round #00d4ff 50%;
 }
+
+/* ─── Benchmark Setup Screen ────────────────────────────── */
+
+#benchmark-setup-scroll {
+    padding: 1 2;
+}
+
+.bench-header {
+    text-align: center;
+    text-style: bold;
+    color: #ffb000;
+}
+
+.form-row {
+    height: 3;
+    padding: 0 0;
+}
+
+.form-label {
+    width: auto;
+    min-width: 26;
+    color: #ffffff;
+}
+
+.spinner-btn {
+    width: 5;
+    min-width: 5;
+}
+
+.spinner-value {
+    width: 8;
+    min-width: 8;
+    text-style: bold;
+    color: #ffd700;
+}
+
+.speed-btn, .opp-btn, .seed-btn {
+    min-width: 12;
+}
+
+.speed-active, .opp-active, .seed-active {
+    background: #00ff41 20%;
+    border: tall #00ff41;
+    text-style: bold;
+    color: #00ff41;
+}
+
+.provider-btn {
+    min-width: 12;
+}
+
+.provider-active {
+    background: #00d4ff 20%;
+    border: tall #00d4ff;
+    text-style: bold;
+    color: #00d4ff;
+}
+
+.dim-row {
+    height: 3;
+}
+
+.dim-label {
+    width: auto;
+    min-width: 40;
+    color: #ffffff;
+}
+
+.dim-spacer {
+    width: 2;
+}
+
+.weight-input {
+    width: 8;
+    min-width: 8;
+}
+
+#preset-buttons {
+    height: auto;
+    padding: 0;
+}
+
+.preset-btn {
+    min-width: 14;
+}
+
+.preset-active {
+    background: #ffb000 20%;
+    border: tall #ffb000;
+    text-style: bold;
+    color: #ffb000;
+}
+
+#bottom-bar {
+    height: 3;
+    padding: 0 2;
+}
+
+#bottom-bar Button {
+    margin: 0 2;
+}
+
+/* Hide/show add model form */
+#add-model-form.hidden {
+    display: none;
+}
+
+#add-model-form.visible {
+    display: block;
+    border: round #00d4ff 30%;
+    padding: 0 1;
+    margin: 1 0;
+}
+
+#add-model-form Input {
+    width: 1fr;
+}
+
+/* Button.-warning variant */
+Button.-warning {
+    color: #ffb000;
+    border: tall #ffb000 50%;
+}
+
+/* ─── Benchmark Live Screen ─────────────────────────────── */
+
+#benchmark-live-container {
+    padding: 0 1;
+}
+
+#live-status-line {
+    height: 1;
+    color: #00d4ff;
+    text-style: bold;
+}
+
+#live-progress-bar {
+    height: 1;
+    color: #00ff41;
+}
+
+#live-panels {
+    height: 1fr;
+}
+
+#live-leaderboard-panel {
+    width: 1fr;
+    min-width: 38;
+    border: round #00ff41 30%;
+    padding: 1;
+    margin: 0 1 0 0;
+}
+
+#live-state-panel {
+    width: 2fr;
+    border: round #00d4ff 30%;
+    padding: 1;
+}
+
+#model-tabs {
+    height: 3;
+}
+
+.model-tab {
+    min-width: 12;
+}
+
+.model-tab-active {
+    background: #00d4ff 20%;
+    border: tall #00d4ff;
+    text-style: bold;
+    color: #00d4ff;
+}
+
+#live-bottom-bar {
+    height: 3;
+    dock: bottom;
+    padding: 0 1;
+}
+
+#live-bottom-bar Button {
+    margin: 0 1;
+}
+
+#live-per-game-estimate {
+    color: #666680;
+    width: 1fr;
+    text-align: right;
+}
+
+/* ─── Benchmark Results Screen ──────────────────────────── */
+
+#benchmark-results-scroll {
+    padding: 1 2;
+}
+
+#report-path-box {
+    color: #ffd700;
+    text-style: bold;
+}
+
+#results-bottom-bar {
+    height: 3;
+    padding: 0 2;
+}
+
+#results-bottom-bar Button {
+    margin: 0 2;
+}
