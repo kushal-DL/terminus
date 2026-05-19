@@ -53,6 +53,9 @@ class ActionType(str, Enum):
     TRADE_SELL = "trade_sell"
     DEMOLISH = "demolish"
     REPAIR = "repair"
+    TRADE_OFFER = "trade_offer"
+    TRADE_ACCEPT = "trade_accept"
+    TRADE_DECLINE = "trade_decline"
 
 
 # ─── Resource & Building Models ──────────────────────────────────────────────
@@ -177,6 +180,18 @@ class TradeRecord(BaseModel):
     total: float
 
 
+class TradeOffer(BaseModel):
+    """Player-to-player trade offer."""
+
+    offer_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    from_player_id: str
+    to_player_id: str
+    offer_resources: dict[str, float] = Field(default_factory=dict)  # what proposer gives
+    request_resources: dict[str, float] = Field(default_factory=dict)  # what proposer wants
+    tick_created: int = 0
+    expires_tick: int = 0  # auto-expire after this tick
+
+
 # ─── Game Settings ───────────────────────────────────────────────────────────
 
 
@@ -200,6 +215,7 @@ class GameState(BaseModel):
     current_catastrophe_index: int = 0
     market: MarketState = Field(default_factory=MarketState)
     trade_history: list[TradeRecord] = Field(default_factory=list)
+    pending_trades: dict[str, TradeOffer] = Field(default_factory=dict)  # offer_id → TradeOffer
     game_start_time: float | None = None  # timestamp when PLAYING started
     elapsed_ticks: int = 0
     score_history: list[dict[str, Any]] = Field(default_factory=list)  # snapshots after each catastrophe

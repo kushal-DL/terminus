@@ -360,6 +360,14 @@ class GameEngine:
         # Check catastrophe timing
         await self._check_catastrophe_timer(elapsed_seconds)
 
+        # Expire stale P2P trade offers
+        expired_ids = [
+            oid for oid, offer in self.state.pending_trades.items()
+            if self.state.elapsed_ticks > offer.expires_tick
+        ]
+        for oid in expired_ids:
+            del self.state.pending_trades[oid]
+
         # Broadcast state update every tick â€” per-player colony state
         for player_id, player in self.state.players.items():
             if player.connected and player.colony:
@@ -943,6 +951,12 @@ class GameEngine:
             result = self._action_demolish(colony, payload)
         elif action_type == ActionType.REPAIR:
             result = self._action_repair(colony, payload)
+        elif action_type == ActionType.TRADE_OFFER:
+            result = self._action_trade_offer(colony, payload, player_id, player.name)
+        elif action_type == ActionType.TRADE_ACCEPT:
+            result = self._action_trade_accept(colony, payload, player_id)
+        elif action_type == ActionType.TRADE_DECLINE:
+            result = self._action_trade_decline(payload, player_id)
         else:
             raise ValueError(f"Unknown action: {action_type}")
 
@@ -1125,6 +1139,182 @@ class GameEngine:
 
         return {"status": "sold", "resource": resource, "quantity": quantity, "revenue": round(revenue, 1)}
 
+    # ─── Player-to-Player Trading ────────────────────────────────────────────
+
+    def _action_trade_offer(self, colony: Colony, payload: dict, player_id: str, player_name: str) -> dict:
+        """Create a trade offer to another player."""
+        from terminus.config import MAX_PENDING_OFFERS, TRADE_OFFER_EXPIRY_TICKS, TRADABLE_RESOURCES
+
+        to_player_id = payload.get("to_player_id", "")
+        offer_resources = payload.get("offer_resources", {})
+        request_resources = payload.get("request_resources", {})
+
+        # Validate target exists
+        if to_player_id not in self.state.players:
+            raise ValueError("Target player not found")
+        if to_player_id == player_id:
+            raise ValueError("Cannot trade with yourself")
+
+        # Validate at least one side non-empty
+        if not offer_resources and not request_resources:
+            raise ValueError("Trade must have at least one resource on either side")
+
+        # Validate resource names and quantities
+        for res, qty in offer_resources.items():
+            if res not in TRADABLE_RESOURCES:
+                raise ValueError(f"Cannot trade resource: {res}")
+            if qty <= 0:
+                raise ValueError(f"Quantity must be positive: {res}")
+
+        for res, qty in request_resources.items():
+            if res not in TRADABLE_RESOURCES:
+                raise ValueError(f"Cannot trade resource: {res}")
+            if qty <= 0:
+                raise ValueError(f"Quantity must be positive: {res}")
+
+        # Validate proposer has the offered resources
+        for res, qty in offer_resources.items():
+            current = getattr(colony.resources, res, 0)
+            if current < qty:
+                raise ValueError(f"Insufficient {res} (have {current:.1f}, offering {qty:.1f})")
+
+        # Check max concurrent outgoing offers
+        outgoing = sum(
+            1 for t in self.state.pending_trades.values()
+            if t.from_player_id == player_id
+        )
+        if outgoing >= MAX_PENDING_OFFERS:
+            raise ValueError(f"Maximum {MAX_PENDING_OFFERS} pending offers allowed")
+
+        # Create offer
+        from terminus.server.models import TradeOffer
+        offer = TradeOffer(
+            from_player_id=player_id,
+            to_player_id=to_player_id,
+            offer_resources=offer_resources,
+            request_resources=request_resources,
+            tick_created=self.state.elapsed_ticks,
+            expires_tick=self.state.elapsed_ticks + TRADE_OFFER_EXPIRY_TICKS,
+        )
+        self.state.pending_trades[offer.offer_id] = offer
+
+        return {
+            "status": "offer_created",
+            "offer_id": offer.offer_id,
+            "to_player": to_player_id,
+            "offer_resources": offer_resources,
+            "request_resources": request_resources,
+            "expires_tick": offer.expires_tick,
+        }
+
+    def _action_trade_accept(self, colony: Colony, payload: dict, player_id: str) -> dict:
+        """Accept a trade offer — atomic resource swap."""
+        from terminus.config import TRADABLE_RESOURCES
+
+        offer_id = payload.get("offer_id", "")
+        offer = self.state.pending_trades.get(offer_id)
+
+        if not offer:
+            raise ValueError("Trade offer not found or expired")
+        if offer.to_player_id != player_id:
+            raise ValueError("This offer is not addressed to you")
+
+        # Check expiry
+        if self.state.elapsed_ticks >= offer.expires_tick:
+            del self.state.pending_trades[offer_id]
+            raise ValueError("Trade offer has expired")
+
+        # Validate the proposer (from_player) still has the offered resources
+        from_player = self.state.players.get(offer.from_player_id)
+        if not from_player or not from_player.colony:
+            del self.state.pending_trades[offer_id]
+            raise ValueError("Proposer is no longer available")
+
+        from_colony = from_player.colony
+        for res, qty in offer.offer_resources.items():
+            current = getattr(from_colony.resources, res, 0)
+            if current < qty:
+                del self.state.pending_trades[offer_id]
+                raise ValueError(f"Proposer no longer has sufficient {res}")
+
+        # Validate the acceptor has the requested resources
+        for res, qty in offer.request_resources.items():
+            current = getattr(colony.resources, res, 0)
+            if current < qty:
+                raise ValueError(f"Insufficient {res} (have {current:.1f}, need {qty:.1f})")
+
+        # ─── Atomic swap ─────────────────────────────────────────────────
+        # Deduct from proposer, add to acceptor
+        for res, qty in offer.offer_resources.items():
+            from_val = getattr(from_colony.resources, res)
+            setattr(from_colony.resources, res, from_val - qty)
+            to_val = getattr(colony.resources, res)
+            cap = getattr(colony.capacity, res)
+            setattr(colony.resources, res, min(to_val + qty, cap))
+
+        # Deduct from acceptor, add to proposer
+        for res, qty in offer.request_resources.items():
+            from_val = getattr(colony.resources, res)
+            setattr(colony.resources, res, from_val - qty)
+            to_val = getattr(from_colony.resources, res)
+            cap = getattr(from_colony.capacity, res)
+            setattr(from_colony.resources, res, min(to_val + qty, cap))
+
+        # Record in trade history
+        total_offered = sum(offer.offer_resources.values())
+        total_requested = sum(offer.request_resources.values())
+        self.state.trade_history.append(TradeRecord(
+            tick=self.state.elapsed_ticks,
+            player_id=offer.from_player_id,
+            player_name=from_player.name,
+            action="p2p_send",
+            resource=",".join(offer.offer_resources.keys()),
+            quantity=int(total_offered),
+            price_per_unit=0,
+            total=total_offered,
+        ))
+        self.state.trade_history.append(TradeRecord(
+            tick=self.state.elapsed_ticks,
+            player_id=player_id,
+            player_name=self.state.players[player_id].name,
+            action="p2p_send",
+            resource=",".join(offer.request_resources.keys()),
+            quantity=int(total_requested),
+            price_per_unit=0,
+            total=total_requested,
+        ))
+
+        # Update trade stats for both
+        from_colony.trades_completed += 1
+        colony.trades_completed += 1
+
+        # Remove the offer
+        del self.state.pending_trades[offer_id]
+
+        return {
+            "status": "trade_completed",
+            "offer_id": offer_id,
+            "received": offer.offer_resources,
+            "sent": offer.request_resources,
+        }
+
+    def _action_trade_decline(self, payload: dict, player_id: str) -> dict:
+        """Decline a trade offer."""
+        offer_id = payload.get("offer_id", "")
+        offer = self.state.pending_trades.get(offer_id)
+
+        if not offer:
+            raise ValueError("Trade offer not found or expired")
+        if offer.to_player_id != player_id:
+            raise ValueError("This offer is not addressed to you")
+
+        del self.state.pending_trades[offer_id]
+
+        return {
+            "status": "trade_declined",
+            "offer_id": offer_id,
+        }
+
     def _action_demolish(self, colony: Colony, payload: dict) -> dict:
         building_type = payload.get("building_type")
         existing = next((b for b in colony.buildings if b.building_type == building_type), None)
@@ -1222,5 +1412,13 @@ class GameEngine:
             "trade_history": [
                 t.model_dump() for t in self.state.trade_history
                 if t.player_id == player_id
+            ],
+            "incoming_trade_offers": [
+                o.model_dump() for o in self.state.pending_trades.values()
+                if o.to_player_id == player_id
+            ],
+            "outgoing_trade_offers": [
+                o.model_dump() for o in self.state.pending_trades.values()
+                if o.from_player_id == player_id
             ],
         }

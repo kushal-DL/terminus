@@ -122,6 +122,12 @@ TRADE_SPEC_SELL_BONUS = 0.85  # trade spec gets sell_spread of 0.85 instead of 0
 
 MARKET_STOCK_PER_RESOURCE = 200  # units available per resource per round
 
+# ─── Player-to-Player Trading ────────────────────────────────────────────────
+
+TRADE_OFFER_EXPIRY_TICKS = 30  # offers expire after this many ticks
+MAX_PENDING_OFFERS = 3  # max concurrent outgoing offers per player
+TRADABLE_RESOURCES = ["food", "materials", "knowledge", "gold"]
+
 # ─── Catastrophe ─────────────────────────────────────────────────────────────
 
 CATASTROPHE_MIN_DAMAGE = 0.08  # Even fully mitigated, take 8% of base damage

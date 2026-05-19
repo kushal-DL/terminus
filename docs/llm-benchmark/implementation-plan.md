@@ -11,11 +11,12 @@ This document outlines the technical implementation phases, aligned with the 8-d
 | 1. Agent Interface | 12.1 | ~7 | Medium | ✓ |
 | 2. Built-in Opponents | 12.2 | ~7 | Low | Partial |
 | 3. Orchestrator | 12.3 | ~6 | High | ✓ |
+| 3.5. P2P Trading | 12.3 / 12.4 | ~3 | Medium | ✓ |
 | 4. Metrics Engine | 12.4 | ~12 | High | Partial |
 | 5. Results & Export | 12.5 | ~6 | Medium | Partial |
 | 6. CLI & TUI Integration | 12.6 | ~6 | Medium | Partial |
 | 7. Testing & Verification | 12.7 | ~8 | Medium | ✓ |
-| **Total** | — | **~52** | — | — |
+| **Total** | — | **~55** | — | — |
 
 ---
 
@@ -132,6 +133,91 @@ terminus/benchmark/
 ├── speed.py              # Speed multiplier + catastrophe schedule compression
 └── config.py             # BenchmarkConfig, ErrorHandlingConfig, TimeoutConfig
 ```
+
+---
+
+## Phase 3.5: Player-to-Player Trading (Engine Extension)
+
+**Goal:** Enable direct resource trading between players (LLM ↔ opponents) so Game Theory metrics (§5.4 Cooperative Surplus, §5.5 Market Manipulation Detection) and adversarial exploitation scenarios can be measured.
+
+**Why this is a prerequisite for Phase 4:**
+- Metric 5.4 (Cooperative Surplus Capture) requires observing whether the LLM proposes/accepts mutually beneficial trades
+- Metric 5.5 (Market Manipulation Detection) requires opponents able to propose manipulative trades
+- The Adversarial agent (Phase 2) needs trade-based exploitation as an attack vector
+- Dimension 8 (Game-Theoretic Sophistication) composite score relies on 5.4 and 5.5 having data
+
+**Reference:** Currently only market trading exists (buy/sell to centralized market with global prices and finite stock). P2P trading was deferred post-V1 (Epic 10.2) but is now required for benchmark completeness.
+
+### Tasks:
+1. Add new `ActionType` values: `TRADE_OFFER`, `TRADE_ACCEPT`, `TRADE_DECLINE`
+2. Create `TradeOffer` model:
+   - Fields: `offer_id`, `from_player_id`, `to_player_id`, `offer_resources: dict[str, float]`, `request_resources: dict[str, float]`, `tick_created`, `expires_tick`
+   - Validation: at least one side non-empty, quantities > 0, player has offered resources at creation time
+3. Add `pending_trades: dict[str, TradeOffer]` to game engine state
+4. Implement `_action_trade_offer()`:
+   - Validate proposer has the offered resources
+   - Create offer with 30-tick expiry (configurable via `TRADE_OFFER_EXPIRY_TICKS`)
+   - Max 3 concurrent outgoing offers per player
+   - Emit `trade_offered` event to target player
+5. Implement `_action_trade_accept()`:
+   - **Atomic resource swap**: validate BOTH sides have resources at acceptance time
+   - Transfer resources simultaneously (prevents exploit on disconnect)
+   - Remove offer from pending, emit `trade_accepted` to both players
+   - Record in trade history with both sides' details
+6. Implement `_action_trade_decline()`:
+   - Remove offer, emit `trade_declined` to proposer
+7. Add trade expiry cleanup in `_tick()`:
+   - Remove expired offers, emit `trade_expired` to proposer
+8. Expose trades in `get_player_state()`:
+   - Add `incoming_trade_offers: list[TradeOffer]` (offers received from others)
+   - Add `outgoing_trade_offers: list[TradeOffer]` (offers sent by this player)
+9. Add trade actions to benchmark `available_actions`:
+   - `TRADE_OFFER` available when opponents exist and < 3 pending outgoing offers
+   - `TRADE_ACCEPT` / `TRADE_DECLINE` available when incoming offers exist
+10. Wire into benchmark orchestrator:
+    - Opponent agents can propose/respond to trades (scripted behavior per archetype)
+    - LLM sees incoming offers in game state prompt
+    - LLM can return `TRADE_OFFER` / `TRADE_ACCEPT` / `TRADE_DECLINE` actions
+
+### Opponent Trade Behaviors (for benchmark scenarios):
+
+| Archetype | Trade Strategy |
+|-----------|----------------|
+| Random | Proposes random trades; accepts randomly |
+| Greedy | Demands more than offered; accepts only if clearly favorable |
+| Balanced | Proposes fair trades based on mutual surplus; accepts if NPV positive |
+| Rush | Offers excess food/materials for knowledge/gold early; declines late-game |
+| Turtle | Rarely proposes; accepts only defensive resources (materials, food) |
+| Adversarial | Rounds 1–3: proposes fair trades (trust building). Rounds 4+: exploitative offers, pump-and-dump coordination |
+
+### Game Theory Scenarios Enabled:
+
+| Scenario | Mechanism | What It Tests |
+|----------|-----------|---------------|
+| **Prisoner's Dilemma** | Both players have surplus of different resources; trade benefits both but non-trading is "safe" | Cooperative rationality (5.4) |
+| **Trust Building → Betrayal** | Adversarial cooperates early, then defects with unfair demands | Exploitation resistance (5.2), pattern detection (5.3) |
+| **Market Manipulation** | Opponent proposes buying LLM's cheap resource, then floods market to crash price | Market adversarial awareness (5.5) |
+| **Exploitation Resistance** | Repeated unfair offers with escalating unfairness | Does LLM always decline, or get anchored? |
+| **Reciprocity Testing** | Opponent accepts LLM's first offer, then proposes slightly unfair counter | Does LLM reciprocate or optimize? |
+
+### Configuration:
+- `TRADE_OFFER_EXPIRY_TICKS = 30` (configurable)
+- `MAX_PENDING_OFFERS = 3` per player
+- Trade history recorded per game for metric analysis
+
+### Modified Files:
+- `terminus/server/models.py` — `ActionType` enum (add 3 values) + `TradeOffer` model
+- `terminus/server/engine.py` — `handle_action()` dispatch + 3 new handlers + `_tick()` expiry + `get_player_state()`
+- `terminus/config.py` — `TRADE_OFFER_EXPIRY_TICKS`, `MAX_PENDING_OFFERS`
+
+### New Files:
+None (all logic integrated into existing engine modules)
+
+### Security Considerations:
+- Atomic swap prevents race condition where one side disconnects mid-trade
+- Resource validation at BOTH creation AND acceptance prevents double-spend
+- Offer expiry prevents stale offers accumulating indefinitely
+- Max concurrent offers prevents memory exhaustion from spam
 
 ---
 
