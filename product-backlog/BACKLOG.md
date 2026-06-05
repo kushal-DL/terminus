@@ -3,7 +3,7 @@
 > **Product**: Terminus — Multiplayer CLI Survival Strategy Game  
 > **Stack**: Python 3.14 | Textual (TUI) | FastAPI + WebSocket | SQLite | Cloudflared  
 > **Target**: 40-60 min games, up to 250 players, `pip install .` + `python -m terminus`  
-> **Last Updated**: 2026-05-16
+> **Last Updated**: 2026-06-05
 
 ---
 
@@ -33,10 +33,10 @@
 | 7 | Visual Identity & Retro Overhaul | 77 | 69 | 0 | 8 |
 | 8 | Testing & Quality | 14 | **14** | 0 | 0 |
 | 9 | Packaging & Distribution | 9 | **9** | 0 | 0 |
-| 10 | Stretch Goals | 10 | 0 | 0 | 10 |
+| 10 | Stretch Goals | 10 | 3 | 0 | 7 |
 | 11 | Developer Tools | 18 | **18** | 0 | 0 |
-| 12 | LLM Benchmark Suite | 42 | 0 | 0 | 42 |
-| | **TOTAL** | **335** | **275** | **0** | **60** |
+| 12 | LLM Benchmark Suite | 53 | 52 | 0 | 1 |
+| | **TOTAL** | **354** | **330** | **0** | **24** |
 
 ---
 
@@ -584,9 +584,9 @@
 
 | Status | ID | Task |
 |--------|-----|------|
-| 💤 | 10.2.1 | Trade offer system (post offer, others accept/decline) |
-| 💤 | 10.2.2 | Trade notification to target player |
-| 💤 | 10.2.3 | P2P trade history |
+| ✅ | 10.2.1 | Trade offer system (post offer, others accept/decline) |
+| ✅ | 10.2.2 | Trade notification to target player |
+| ✅ | 10.2.3 | P2P trade history |
 
 ### 10.3 — Game Replays
 
@@ -651,93 +651,95 @@
 
 ## Epic 12: LLM Benchmark Suite [P1]
 
+> See [epic-12-llm-benchmark.md](epic-12-llm-benchmark.md) for full story details.
+
 ### 12.1 — LLM Agent Interface [P0]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.1.1 | `BenchmarkGameState` Pydantic schema — JSON sent to LLMs per turn | resources, buildings, workers, market, catastrophe_warning, opponents, available_actions |
-| ⬜ | 12.1.2 | `ActionResponse` Pydantic schema — JSON received from LLMs | action, params, reasoning (structured factors + weights) |
-| ⬜ | 12.1.3 | `ReasoningFactors` schema — 12 predefined decision factors with weights | resource_bottleneck, long_term_growth, opponent_pressure, catastrophe_preparation, market_opportunity, efficiency_optimization, defensive_positioning, cooperative_opportunity, specialization_synergy, immediate_survival, information_gathering, risk_diversification |
-| ⬜ | 12.1.4 | Abstract `LLMAgent` base class — `async choose_action(state) -> ActionResponse` | Timeout, retry, validation interface |
-| ⬜ | 12.1.5 | OpenAI-compatible adapter — covers GPT, Claude (via proxy), Ollama, vLLM | Uses httpx, configurable endpoint/model/temperature/max_tokens |
-| ⬜ | 12.1.6 | Connection test method — validates API reachability with simple prompt | Returns latency + model name confirmation |
-| ⬜ | 12.1.7 | Token counting — tiktoken for OpenAI models, heuristic (chars÷4) for others | Input + output tokens per turn |
+| ✅ | 12.1.1 | `BenchmarkGameState` Pydantic schema | resources, buildings, workers, market, catastrophe_warning, opponents, available_actions |
+| ✅ | 12.1.2 | `ActionResponse` Pydantic schema | action, params, reasoning (structured factors + weights) |
+| ✅ | 12.1.3 | `ReasoningFactors` schema — 12 predefined decision factors with weights | resource_bottleneck, long_term_growth, opponent_pressure, catastrophe_preparation, market_opportunity, efficiency_optimization, defensive_positioning, cooperative_opportunity, specialization_synergy, immediate_survival, information_gathering, risk_diversification |
+| ✅ | 12.1.4 | Abstract `LLMAdapter` base class — `async get_action(state, history, actions) -> ActionResponse` | Timeout, retry, validation interface; `terminus/benchmark/agent.py` |
+| ✅ | 12.1.5 | OpenAI-compatible, Anthropic, and Google adapters | `terminus/benchmark/adapters/`; uses httpx, configurable endpoint/model/temperature/max_tokens |
+| ✅ | 12.1.6 | Connection test method — validates API reachability | Returns latency + model confirmation |
+| ✅ | 12.1.7 | Token counting — tiktoken for OpenAI models, heuristic (chars÷4) for Anthropic/Ollama | `terminus/benchmark/tokens.py` |
 
 ### 12.2 — Built-in Opponents [P0]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.2.1 | Random agent — uniform random from valid actions | Baseline floor (score = 0.0 in normalization) |
-| ⬜ | 12.2.2 | Greedy heuristic — always picks highest immediate-value action | Mid-floor reference agent |
-| ⬜ | 12.2.3 | Balanced heuristic — follows fixed optimal build order + allocation | Near-ceiling reference for scoring normalization |
+| ✅ | 12.2.1 | Random agent | `terminus/benchmark/opponents/random_agent.py` |
+| ✅ | 12.2.2 | Greedy heuristic | `terminus/benchmark/opponents/greedy_agent.py` |
+| ✅ | 12.2.3 | Balanced heuristic | `terminus/benchmark/opponents/balanced_agent.py` |
+| ✅ | 12.2.4 | Rush agent (beyond MVP) | `terminus/benchmark/opponents/rush_agent.py` |
+| ✅ | 12.2.5 | Turtle agent (beyond MVP) | `terminus/benchmark/opponents/turtle_agent.py` |
+| ✅ | 12.2.6 | Adversarial agent (beyond MVP) | `terminus/benchmark/opponents/adversarial_agent.py` |
 
 ### 12.3 — Benchmark Orchestrator [P0]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.3.1 | `BenchmarkConfig` Pydantic model — game count, speed, max turns, seeds, metrics, weights, rate limit | JSON/YAML loadable, presets (Balanced, Reliability, Strategy, Triage, Endurance, Precision) |
-| ⬜ | 12.3.2 | Speed multiplier module — divides all engine timers by multiplier (1×, 2×, 5×, 10×) | Build time, catastrophe interval, market tick — all scaled |
-| ⬜ | 12.3.3 | Headless game runner — instantiate engine directly (no FastAPI/WS overhead) | Direct function calls to game engine, seeded RNG |
-| ⬜ | 12.3.4 | Turn loop — send state to all agents simultaneously, collect responses, validate, apply | Respects rate limits, handles timeouts, logs invalid actions |
-| ⬜ | 12.3.5 | Game sequence manager — runs N games sequentially with seed progression | Stores results per game, reports progress |
-| ⬜ | 12.3.6 | Per-turn data recorder — snapshots full state + action + validation + timing + tokens | Stored in memory during game, serialized to JSON after |
-| ⬜ | 12.3.7 | Rate limit controller — optional per-minute or per-concurrent cap with queue | Host-configurable, can be disabled for self-hosted models |
-| ⬜ | 12.3.8 | Scripted disruption injector — engineers catastrophes/market shocks at fixed turns | For reproducible flexibility testing |
+| ✅ | 12.3.1 | `BenchmarkConfig` Pydantic model | `terminus/benchmark/schemas.py`; JSON loadable, 9 weight presets |
+| ✅ | 12.3.2 | Speed multiplier module | `terminus/benchmark/speed.py`; 1×/2×/5×/10× |
+| ✅ | 12.3.3 | Headless game runner | `terminus/benchmark/orchestrator_v2.py`; direct engine calls, no FastAPI/WS |
+| ✅ | 12.3.4 | Turn loop | State → LLM → validate → apply → opponent → tick; error handling + retries |
+| ✅ | 12.3.5 | Game sequence manager | `terminus/benchmark/runner.py`; pause/resume/abort/skip |
+| ✅ | 12.3.6 | Per-turn data recorder | `terminus/benchmark/recorder.py`; `TurnSnapshot` → `GameRecording` |
+| ✅ | 12.3.7 | Rate limit controller | `terminus/benchmark/error_handler.py`; exponential backoff |
+| ✅ | 12.3.8 | P2P trading (Phase 3.5) | TRADE_OFFER/ACCEPT/DECLINE in engine + orchestrator + opponents |
 
 ### 12.4 — Metrics Engine [P0]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.4.1 | Abstract `MetricScorer` base class — `score(recording) -> DimensionResult` | Returns score (0-1), sub-scores, reported values dict |
-| ⬜ | 12.4.2 | Tier 1 Planning metrics (6): build order, anticipation, market timing, catastrophe prep, housing, stockpile | Raw game measurements |
-| ⬜ | 12.4.3 | Tier 1 Numerical metrics (6): invalid actions, worker sums, over-capacity, timing, trade math, feasibility | Raw game measurements |
-| ⬜ | 12.4.4 | Tier 1 Flexibility metrics (7): recovery speed, reallocation, repair priority, market adapt, starvation, defense learn, distribution shift | Raw game measurements |
-| ⬜ | 12.4.5 | Tier 2 Dimension 1: Multi-Decision Coherence Decay — inflection point detection, decay rate | From reasoning factors consistency + trigger correlation |
-| ⬜ | 12.4.6 | Tier 2 Dimension 2: Applied Arithmetic Under Cognitive Load — load-weighted accuracy | From all numerical metrics + load factor computation |
-| ⬜ | 12.4.7 | Tier 2 Dimension 3: Priority Triage Under Competing Constraints — expert ordering comparison | From multi-constraint event detection + action priority |
-| ⬜ | 12.4.8 | Tier 2 Dimension 4: Compounding Error Recognition — detection lead time | From resource trajectory analysis + corrective action timing |
-| ⬜ | 12.4.9 | Tier 2 Dimension 5: Justified Pivot vs Inconsistency — signal-to-noise ratio | From strategy change detection + trigger correlation |
-| ⬜ | 12.4.10 | Tier 2 Dimension 6: Graceful Degradation Curve — failure mode classification | From per-turn quality curve fitting (linear, cliff, oscillating, stable, improving) |
-| ⬜ | 12.4.11 | Tier 2 Dimension 7: Opportunity Cost Awareness — optimality gap measurement | From action value computation + 20-tick lookahead simulator |
-| ⬜ | 12.4.12 | Composite scorer — weighted aggregation with 6 presets | Balanced, Reliability, Strategy, Triage, Endurance, Precision |
-| ⬜ | 12.4.13 | Trend analysis — linear regression across N games, classification (Improving/Consistent/Degrading/Volatile) | Requires scipy or numpy for regression |
-| ⬜ | 12.4.14 | LLM archetype classification — cross-dimension correlation analysis | Strategist, Accountant, Firefighter, Marathon Runner, All-Rounder, Specialist |
+| ✅ | 12.4.1 | Abstract `MetricCollector` base class | `terminus/benchmark/metrics/base.py` |
+| ✅ | 12.4.2 | Tier 1 Planning metrics (6) | `terminus/benchmark/metrics/planning.py` |
+| ✅ | 12.4.3 | Tier 1 Numerical metrics (6) | `terminus/benchmark/metrics/numerical.py` |
+| ✅ | 12.4.4 | Tier 1 Flexibility metrics (7) | `terminus/benchmark/metrics/flexibility.py` |
+| ✅ | 12.4.5 | Tier 2 Dimension 1: Multi-Decision Coherence | `terminus/benchmark/dimensions/coherence.py` |
+| ✅ | 12.4.6 | Tier 2 Dimension 2: Applied Arithmetic Under Load | `terminus/benchmark/dimensions/arithmetic.py` |
+| ✅ | 12.4.7 | Tier 2 Dimension 3: Priority Triage | `terminus/benchmark/dimensions/triage.py` |
+| ✅ | 12.4.8 | Tier 2 Dimension 4: Compounding Error Recognition | `terminus/benchmark/dimensions/error_recognition.py` |
+| ✅ | 12.4.9 | Tier 2 Dimension 5: Justified Pivot vs Inconsistency | `terminus/benchmark/dimensions/pivot.py` |
+| ✅ | 12.4.10 | Tier 2 Dimension 6: Graceful Degradation | `terminus/benchmark/dimensions/degradation.py` |
+| ✅ | 12.4.11 | Tier 2 Dimension 7: Opportunity Cost Awareness | `terminus/benchmark/dimensions/opportunity.py` |
+| ✅ | 12.4.12 | Composite scorer — 9 weight presets | `terminus/benchmark/dimensions/composite.py` |
+| ✅ | 12.4.13 | Trend analysis | `terminus/benchmark/dimensions/trend.py` |
+| ✅ | 12.4.14 | LLM archetype classification | `terminus/benchmark/dimensions/archetypes.py`; 8 archetypes |
 
 ### 12.5 — Results & HTML Export [P0]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.5.1 | Results aggregation module — per-game scores, per-dimension breakdowns, confidence intervals | 95% CI on all scores |
-| ⬜ | 12.5.2 | Jinja2 HTML template — self-contained report with embedded Chart.js | CDN for Chart.js, single-file output |
-| ⬜ | 12.5.3 | Score progression line chart (per model across games) | Chart.js line chart, one series per LLM |
-| ⬜ | 12.5.4 | Per-dimension grouped bar chart | 7 dimensions × N models, color-coded |
-| ⬜ | 12.5.5 | Summary ranking table — model, composite score, trend, consistency | Sortable, with trend badges |
-| ⬜ | 12.5.6 | Tier 1 detail section — expandable per-game sub-metric breakdowns | Collapsible HTML sections |
-| ⬜ | 12.5.7 | Tier 3 mapping section — agentic workflow predictions per model | Table with production implications |
-| ⬜ | 12.5.8 | Archetype classification display — radar chart per model | Spider chart showing dimension profile |
-| ⬜ | 12.5.9 | JSON companion export — structured data matching HTML content | `results.json` alongside `report.html` |
-| ⬜ | 12.5.10 | Export CLI — `terminus --benchmark --config FILE` produces output in `./benchmark-results/` | Creates directory, writes HTML + JSON |
+| ✅ | 12.5.1 | Results aggregation — `BenchmarkResult.from_recordings()` invokes MetricsEngine + DimensionScorer | `terminus/benchmark/results.py` — complete with ModelResult, rankings, summary |
+| ✅ | 12.5.2 | HTML report — self-contained with dimension table | `terminus/benchmark/report.py` now receives real dimension scores |
+| ✅ | 12.5.7 | Wire runner to produce `BenchmarkResult` (update `runner.py`) | `runner.py` calls `BenchmarkResult.from_recordings()` and `write_report()` |
+| ✅ | 12.5.3 | JSON export — full-fidelity round-trip | `terminus/benchmark/export/json_export.py` |
+| ✅ | 12.5.4 | CSV export — summary (1 row/model) + detailed (1 row/game) | `terminus/benchmark/export/csv_export.py` |
+| ✅ | 12.5.5 | Markdown export — GFM tables with archetype emoji | `terminus/benchmark/export/markdown_export.py` |
+| ✅ | 12.5.6 | Statistical analysis — bootstrap CIs, Mann-Whitney U (scipy optional) | `terminus/benchmark/export/statistics.py` |
 
 ### 12.6 — CLI & Integration [P1]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.6.1 | `--benchmark` CLI flag in `__main__.py` | Launches benchmark mode instead of game |
-| ⬜ | 12.6.2 | `--benchmark-config PATH` — load config from JSON/YAML file | Validates config, fails fast on missing fields |
-| ⬜ | 12.6.3 | Interactive TUI setup screen — configure models, games, speed, metrics when no config file | Textual screen with form inputs |
-| ⬜ | 12.6.4 | Progress display — live terminal output during benchmark (game N/M, turn X/Y, current scores) | Simple print-based, not full TUI |
-| ⬜ | 12.6.5 | `[benchmark]` optional dependency group in `pyproject.toml` | jinja2, tiktoken |
+| ✅ | 12.6.1 | `--benchmark CONFIG` CLI flag — load `BenchmarkConfig` from JSON, run headlessly | `terminus/__main__.py`; progress to stdout; report path printed on completion |
+| 💤 | 12.6.2 | `--benchmark-config PATH` CI-only variant (no interactive fallback) | Subsumed by `--benchmark CONFIG`; deferred |
+| ✅ | 12.6.3 | TUI setup screen | `terminus/client/screens/benchmark_setup.py`; `build_benchmark_config()` added |
+| ✅ | 12.6.4 | Live progress screen — wired to `BenchmarkRunner`, passes `display_config` | `terminus/client/screens/benchmark_live.py`; Phase B complete (2026-06-05) |
+| ✅ | 12.6.5 | Results dashboard screen — export buttons for HTML/CSV/JSON; all exports listed | `terminus/client/screens/benchmark_results.py`; [Open CSV] + [Open JSON] buttons added |
 
 ### 12.7 — Testing & Verification [P1]
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ⬜ | 12.7.1 | Unit tests: schemas validation (valid + invalid action responses) | `tests/benchmark/test_schemas.py` |
-| ⬜ | 12.7.2 | Unit tests: metric scorers (known inputs → expected scores) | `tests/benchmark/test_metrics.py` |
-| ⬜ | 12.7.3 | Unit tests: orchestrator (mock LLM, verify turn loop) | `tests/benchmark/test_orchestrator.py` |
-| ⬜ | 12.7.4 | Unit tests: HTML export (template renders without error) | `tests/benchmark/test_export.py` |
-| ⬜ | 12.7.5 | Integration test: 1 game, Random vs Greedy, all metrics, verify HTML output | Smoke test with fixture config |
-| ⬜ | 12.7.6 | Sanity check: Random agent scores lower than Greedy on all dimensions | Validates scoring logic direction |
+| ✅ | 12.7.1 | Schema validation tests | `tests/test_agent_interface.py` |
+| ✅ | 12.7.2 | Metric scorer tests | `tests/test_metrics_tier1.py` (65 tests), `tests/test_dimensions_tier2.py` (64 tests) |
+| ✅ | 12.7.3 | Orchestrator tests | `tests/test_orchestrator_v2.py`, `tests/test_opponents.py` |
+| ✅ | 12.7.4 | HTML export tests — report written and non-empty after real run | `tests/test_benchmark_integration.py::TestHtmlReportGeneration` (5 tests) |
+| ✅ | 12.7.5 | End-to-end integration test (mock LLM, full pipeline → HTML) | `tests/test_benchmark_integration.py::TestEndToEndPipeline` (5 tests) |
+| ✅ | 12.7.6 | Agent sanity checks — all 6 archetypes produce valid recordings, BUILD actions recorded | `tests/test_benchmark_integration.py::TestAgentSanityCheck` (3 tests) + `TestCLIHeadless` (4 tests) |
 
 ---
 
@@ -775,8 +777,16 @@ Epic 1 ✅ Foundation & Infrastructure (16/16 done)
   ├──→ Epic 6 ✅ Persistence & Reliability (9/9)
   ├──→ Epic 8 ✅ Testing & Quality (14/14)
   ├──→ Epic 9 ✅ Packaging & Distribution (9/9 COMPLETE)
-  └──→ Epic 10 💤 Stretch Goals (0/10, deferred)
-  └──→ Epic 11 ✅ Developer Tools (18/18)
+  ├──→ Epic 10 🚧 Stretch Goals (3/10 — P2P trading done as part of Epic 12)
+  ├──→ Epic 11 ✅ Developer Tools (18/18)
+  └──→ Epic 12 ✅ LLM Benchmark Suite (52/53 done, 1 💤 deferred)
+        ├── 12.1 ✅ Agent Interface (7/7)
+        ├── 12.2 ✅ Built-in Opponents (6/6)
+        ├── 12.3 ✅ Orchestrator (8/8)
+        ├── 12.4 ✅ Metrics Engine (14/14)
+        ├── 12.5 ✅ Results & Export (7/7 — HTML/JSON/CSV/Markdown/Stats)
+        ├── 12.6 🚧 CLI & TUI (4/5 — 12.6.2 deferred)
+        └── 12.7 ✅ Testing & Verification (6/6 — 594 tests passing)
 ```
 
 ---

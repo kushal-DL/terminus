@@ -1,7 +1,7 @@
 # Epic 4: TUI Client (Screens & Logic)
 
 > **Priority**: P0  
-> **Status**: 38 ✅ Done · 8 🔨 Scaffolded · 1 ⬜ TODO (47 stories)  
+> **Status**: ✅ All 52 stories done  
 > **Framework**: Textual (Python TUI)  
 > **Sprint**: 1 (basic), 3-4 (visual overhaul)
 
@@ -91,9 +91,9 @@
 **I want** to see a clear indicator when my connection drops and auto-retry  
 **So that** I'm not confused by stale data and can reconnect without restarting
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
-**Notes**: App-level WS dispatcher prevents event loss; ConnectionLost modal works; still needs button disable + backoff
+**Notes**: App-level WS dispatcher prevents event loss; ConnectionLost modal with auto-retry on mount, exponential backoff (1→2→4→8→16s cap 30s), attempt counter, button disable during retry, manual retry after 5 failures.
 
 **Implementation Notes**:
 - `ConnectionLostScreen(ModalScreen)` in `terminus/client/screens/connection_lost.py`
@@ -689,7 +689,7 @@
 
 ### Story 4.8.3 — Game Statistics
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Post-game stats panel: total resources produced, catastrophes survived, trades made

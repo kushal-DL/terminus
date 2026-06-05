@@ -21,11 +21,11 @@ class BenchmarkResultsScreen(Screen):
         ("q", "go_menu", "Menu"),
     ]
 
-    def __init__(self, results: dict | None = None, config: dict | None = None) -> None:
+    def __init__(self, results: dict | None = None, config: dict | None = None, report_path: str | None = None) -> None:
         super().__init__()
         self._results = results
         self._config = config or {}
-        self._report_path: str | None = None
+        self._report_path: str | None = report_path  # pre-written by BenchmarkRunner
         self._dimension_scores: dict[str, dict[str, float]] = {}
 
     def compose(self) -> ComposeResult:
@@ -66,7 +66,9 @@ class BenchmarkResultsScreen(Screen):
             # ─── Bottom Actions ───────────────────────────────────
             with Horizontal(id="results-bottom-bar"):
                 yield Button("[Open in Browser]", id="btn-open-report", variant="success")
-                yield Button("[Return to Menu]", id="btn-return-menu", variant="primary")
+                yield Button("[Open CSV]", id="btn-open-csv", variant="primary")
+                yield Button("[Open JSON]", id="btn-open-json", variant="primary")
+                yield Button("[Return to Menu]", id="btn-return-menu", variant="default")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -75,16 +77,18 @@ class BenchmarkResultsScreen(Screen):
         self._populate_results()
 
     def _compute_dimensions(self) -> None:
-        """Compute dimension scores from results data."""
+        """Extract dimension scores already computed by the scoring pipeline."""
         if not self._results:
             return
+        # Real dimension data is in results["dimensions"] keyed by display name
+        real_dims = self._results.get("dimensions", {})
+        if real_dims:
+            self._dimension_scores = real_dims
+            return
+        # Fallback: legacy approximation from game summary stats
         try:
             from terminus.benchmark.scorer import score_dimensions
-
-            # Use game_results directly if available (preferred)
-            game_results: list[dict[str, Any]] = self._results.get("game_results", [])
-
-            # Fallback: reconstruct from model_stats
+            game_results: list = self._results.get("game_results", [])
             if not game_results and "model_stats" in self._results:
                 model_stats = self._results.get("model_stats", {})
                 for name, stats in model_stats.items():
@@ -94,7 +98,6 @@ class BenchmarkResultsScreen(Screen):
                     invalid = stats.get("total_invalid", 0)
                     per_game_valid = valid // max(games_played, 1)
                     per_game_invalid = invalid // max(games_played, 1)
-
                     for score in scores:
                         game_results.append({
                             "model_name": name,
@@ -103,20 +106,19 @@ class BenchmarkResultsScreen(Screen):
                             "valid_actions": per_game_valid,
                             "invalid_actions": per_game_invalid,
                         })
-
-            if not game_results:
-                return
-
-            self._dimension_scores = score_dimensions(game_results, self._config)
-            # Attach to results for report generation
-            self._results["dimensions"] = self._dimension_scores
+            if game_results:
+                self._dimension_scores = score_dimensions(game_results, self._config)
         except Exception:
             pass
 
     def _generate_report(self) -> None:
-        """Generate the HTML report file."""
-        from datetime import datetime
+        """Generate the HTML report file — skipped if runner already wrote it."""
+        if self._report_path:
+            from pathlib import Path
+            if Path(self._report_path).exists():
+                return  # Runner already wrote it
 
+        from datetime import datetime
         report_dir = Path("./benchmark-results")
         report_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%dT%H-%M")
@@ -129,7 +131,7 @@ class BenchmarkResultsScreen(Screen):
                     self._results, self._config, self._report_path
                 )
             except Exception:
-                pass  # Report generation failed; path still set but file may not exist
+                pass
 
     def _populate_results(self) -> None:
         """Populate the screen with benchmark results."""
@@ -157,12 +159,16 @@ class BenchmarkResultsScreen(Screen):
         if self._report_path:
             report_exists = Path(self._report_path).exists()
             status = "✓ Generated" if report_exists else "⚠ Not generated"
+            # Derive sibling file paths
+            base = Path(self._report_path).name.replace("_report.html", "")
             path_display = (
                 f"  ╔═══════════════════════════════════════════════════════════╗\n"
-                f"  ║  📄 HTML Report: {status:<40} ║\n"
-                f"  ║     {self._report_path:<52} ║\n"
-                f"  ║                                                           ║\n"
-                f"  ║  Press 'o' or [Open in Browser] to view                   ║\n"
+                f"  ║  Reports: {status:<47}║\n"
+                f"  ║  HTML : {self._report_path:<49}║\n"
+                f"  ║  JSON : {base}_results.json{'':<(49 - len(base) - 13)}║\n"
+                f"  ║  CSV  : {base}_summary.csv{'':<(49 - len(base) - 12)}║\n"
+                f"  ║  MD   : {base}_summary.md{'':<(49 - len(base) - 11)}║\n"
+                f"  ║  Press 'o' or [Open in Browser] to view HTML              ║\n"
                 f"  ╚═══════════════════════════════════════════════════════════╝"
             )
         else:
@@ -171,34 +177,52 @@ class BenchmarkResultsScreen(Screen):
 
         # Rankings table
         table = self.query_one("#results-rankings", DataTable)
-        table.add_columns("#", "Model", "Avg Score", "Valid%", "Games", "Consistency")
+        table.add_columns("#", "Model", "Composite", "Avg Score", "Valid%", "Games", "Archetype", "Trend")
         if self._results and "rankings" in self._results:
             for r in self._results["rankings"]:
+                composite = r.get("composite_score")
+                composite_str = f"{composite:.3f}" if composite is not None else "—"
+                score_val = r.get("score", r.get("avg_score", 0))
                 valid_str = f"{r.get('valid_rate', 0) * 100:.0f}%" if r.get("valid_rate") is not None else "—"
+                archetype = str(r.get("archetype", "—")).title()
+                trend = str(r.get("trend", "—")).title()
                 table.add_row(
                     str(r.get("rank", "?")),
-                    r["name"],
-                    f"{r['score']:.1f}",
+                    r.get("name", "?"),
+                    composite_str,
+                    f"{score_val:.1f}",
                     valid_str,
                     str(r.get("games_played", "—")),
-                    f"±{r.get('consistency', 0):.1f}",
+                    archetype,
+                    trend,
                 )
         else:
             for i, model in enumerate(models, 1):
-                table.add_row(str(i), model["name"], "—", "—", "—", "—")
+                table.add_row(str(i), model["name"], "—", "—", "—", "—", "—", "—")
 
         # Dimension breakdown
         if self._dimension_scores:
+            DIM_SHORT = [
+                "Coherence", "Arithmetic", "Triage", "Err.Recog",
+                "Pivot", "Degrade", "OpCost", "GameThry",
+            ]
             from terminus.benchmark.scorer import DIMENSIONS
-            lines = ["  Model             " + "  ".join(f"{d[:8]:<8}" for d in DIMENSIONS)]
-            lines.append("  " + "─" * (18 + 10 * 8))
+            header = f"  {'Model':<18}" + "".join(f"{d:<10}" for d in DIM_SHORT) + "  Composite"
+            lines = [header, "  " + "─" * (18 + 10 * 8 + 12)]
             for model_name, scores in self._dimension_scores.items():
                 cells = []
                 for dim in DIMENSIONS:
-                    val = scores.get(dim, 0)
+                    val = scores.get(dim, 0.0)
                     bar = "█" * int(val * 5) + "░" * (5 - int(val * 5))
-                    cells.append(f"{bar}{val:.2f}"[:8])
-                lines.append(f"  {model_name:<18}" + "  ".join(f"{c:<8}" for c in cells))
+                    cells.append(f"{bar}{val:.2f}"[:9])
+                # Composite from rankings if available
+                composite = "—"
+                if self._results and "rankings" in self._results:
+                    for r in self._results["rankings"]:
+                        if r.get("name") == model_name and r.get("composite_score") is not None:
+                            composite = f"{r['composite_score']:.3f}"
+                            break
+                lines.append(f"  {model_name:<18}" + " ".join(f"{c:<9}" for c in cells) + f"  {composite}")
             self.query_one("#results-dimensions", Static).update("\n".join(lines))
         else:
             self.query_one("#results-dimensions", Static).update(
@@ -228,6 +252,10 @@ class BenchmarkResultsScreen(Screen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "btn-open-report":
             self.action_open_report()
+        elif event.button.id == "btn-open-csv":
+            self.action_open_csv()
+        elif event.button.id == "btn-open-json":
+            self.action_open_json()
         elif event.button.id == "btn-return-menu":
             self.action_go_menu()
 
@@ -243,6 +271,33 @@ class BenchmarkResultsScreen(Screen):
                 self.notify("Report file not found (benchmark may not have completed)", severity="warning")
         else:
             self.notify("No report path available", severity="warning")
+
+    def action_open_csv(self) -> None:
+        """Open the CSV summary in the default application."""
+        if not self._report_path:
+            self.notify("No report available", severity="warning")
+            return
+        # Derive CSV path from HTML path: TIMESTAMP_report.html → TIMESTAMP_summary.csv
+        csv_path = Path(self._report_path).with_name(
+            Path(self._report_path).name.replace("_report.html", "_summary.csv")
+        )
+        if csv_path.exists():
+            webbrowser.open(csv_path.resolve().as_uri())
+        else:
+            self.notify(f"CSV not found: {csv_path.name}", severity="warning")
+
+    def action_open_json(self) -> None:
+        """Open the JSON results in the default application."""
+        if not self._report_path:
+            self.notify("No report available", severity="warning")
+            return
+        json_path = Path(self._report_path).with_name(
+            Path(self._report_path).name.replace("_report.html", "_results.json")
+        )
+        if json_path.exists():
+            webbrowser.open(json_path.resolve().as_uri())
+        else:
+            self.notify(f"JSON not found: {json_path.name}", severity="warning")
 
     def action_go_menu(self) -> None:
         """Return to main menu by popping benchmark screens off the stack."""

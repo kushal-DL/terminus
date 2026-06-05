@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "terminus-game"
-version = "0.2.2"
+version = "0.3.0"
 description = "Multiplayer CLI survival strategy game"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -64,3 +64,7 @@ asyncio_mode = "auto"
 markers = [
     "slow: marks tests as slow (deselect with '-m \"not slow\"')",
 ]
+
+[tool.pyright]
+pythonVersion = "3.11"
+reportCallIssue = false

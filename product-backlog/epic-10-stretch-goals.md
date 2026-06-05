@@ -1,7 +1,7 @@
 # Epic 10: Stretch Goals (Post-V1)
 
 > **Priority**: P3  
-> **Status**: 💤 Deferred  
+> **Status**: 🚧 Partial — 3 done (10.2 P2P Trading shipped in Phase 3.5), 7 💤 deferred  
 > **Sprint**: Post-launch
 
 ---
@@ -49,7 +49,9 @@
 
 ### Story 10.2.1 — Trade Offer System
 
-**Status**: 💤 Deferred
+**Status**: ✅ Done
+
+**Implementation Notes**: Shipped as part of Epic 12 Phase 3.5 (benchmark P2P trading). TRADE_OFFER/TRADE_ACCEPT/TRADE_DECLINE action types in engine. Atomic resource swap, 30-tick expiry, max 3 concurrent offers.
 
 **Acceptance Criteria**:
 - [ ] POST /game/trade/offer: `{to_player: str, offer: Resources, request: Resources}`
@@ -62,7 +64,9 @@
 
 ### Story 10.2.2 — Trade Notification
 
-**Status**: 💤 Deferred
+**Status**: ✅ Done
+
+**Implementation Notes**: Opponents and LLM receive trade offers via `incoming_trade_offers` in game state. Trade accepted/declined events handled in engine.
 
 **Acceptance Criteria**:
 - [ ] WebSocket event: `trade_offer_received`
@@ -74,7 +78,9 @@
 
 ### Story 10.2.3 — P2P Trade History
 
-**Status**: 💤 Deferred
+**Status**: ✅ Done
+
+**Implementation Notes**: Trade offers tracked in engine state. `TurnRecorder` records all trade actions in `GameRecording`.
 
 **Acceptance Criteria**:
 - [ ] Log of all P2P trades (both parties see)

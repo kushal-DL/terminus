@@ -22,6 +22,12 @@ class TurnCompleted:
     colony_state: dict[str, Any] = field(default_factory=dict)
     # Current score
     score: float = 0.0
+    # Opponent score (for side-by-side comparison in live viewer)
+    opponent_score: float = 0.0
+    # Top reasoning factor from LLM response (e.g. "long_term_growth:0.60")
+    reasoning_summary: str = ""
+    # Short summary of any trade activity this turn (e.g. "offered 20 food for 10 gold")
+    trade_summary: str = ""
 
 
 @dataclass

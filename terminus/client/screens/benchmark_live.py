@@ -20,6 +20,7 @@ from terminus.benchmark.events import (
     GameStarted,
     TurnCompleted,
 )
+from terminus.benchmark.schemas import BenchmarkConfig
 
 
 class BenchmarkLiveScreen(Screen):
@@ -31,34 +32,41 @@ class BenchmarkLiveScreen(Screen):
         ("escape", "abort", "Abort"),
     ]
 
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        benchmark_config: BenchmarkConfig,
+        display_config: dict[str, Any],
+    ) -> None:
         super().__init__()
-        self._config = config
+        self._benchmark_config = benchmark_config
+        self._display_config = display_config  # plain dict for UI helpers
         self._paused = False
         self._current_game = 0
         self._current_turn = 0
         self._total_games = (
-            len(config.get("models", []))
-            * config.get("num_opponents", 6)
-            * config.get("num_games", 10)
+            len(display_config.get("models", []))
+            * display_config.get("num_opponents", 6)
+            * display_config.get("num_games", 10)
         )
-        self._max_turns = config.get("max_turns", 100)
+        self._max_turns = display_config.get("max_turns", 100)
         self._catastrophes_seen = 0
 
-        # Event queue and orchestrator (set by _start_orchestrator)
+        # Event queue and runner (set by _start_runner)
         self._event_queue: asyncio.Queue[BenchmarkEvent] = asyncio.Queue()
-        self._orchestrator: Any = None
+        self._runner: Any = None
         self._poll_timer: Timer | None = None
 
         # State tracking for display
         self._model_scores: dict[str, list[float]] = {}
         self._model_current_score: dict[str, float] = {}
+        self._model_opp_score: dict[str, float] = {}
         self._model_valid: dict[str, int] = {}
         self._model_invalid: dict[str, int] = {}
         self._model_games: dict[str, int] = {}
         self._selected_model: int = 0
         self._last_colony_state: dict[int, dict[str, Any]] = {}
         self._last_actions: list[str] = []
+        self._last_trades: list[str] = []
         self._errors: list[str] = []
 
     def compose(self) -> ComposeResult:
@@ -84,7 +92,7 @@ class BenchmarkLiveScreen(Screen):
                 with Vertical(id="live-state-panel"):
                     yield Static("─── Game State ───", classes="panel-title")
                     with Horizontal(id="model-tabs"):
-                        for i, model in enumerate(self._config.get("models", [])):
+                        for i, model in enumerate(self._display_config.get("models", [])):
                             active = "model-tab-active" if i == 0 else ""
                             yield Button(model["name"], id=f"btn-model-{i}", classes=f"model-tab {active}")
                     yield Label("")
@@ -93,8 +101,11 @@ class BenchmarkLiveScreen(Screen):
                     yield Static("", id="live-buildings")
                     yield Static("", id="live-workers")
                     yield Label("")
-                    yield Static("─── Last Actions ───", classes="panel-title")
+                    yield Static("─── Last Actions & Reasoning ───", classes="panel-title")
                     yield Static("", id="live-actions")
+                    yield Label("")
+                    yield Static("─── Trade Activity ───", classes="panel-title")
+                    yield Static("", id="live-trades")
 
             # ─── Bottom Controls ──────────────────────────────────
             yield Label("")
@@ -106,15 +117,16 @@ class BenchmarkLiveScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        # Setup leaderboard table
+        # Setup leaderboard table — includes opponent score column
         table = self.query_one("#live-leaderboard", DataTable)
-        table.add_columns("#", "Model", "Avg Score", "Valid%", "Game#")
+        table.add_columns("#", "Model", "Avg Score", "Opp Score", "Valid%", "Game#")
 
         # Initialize model tracking
-        for model in self._config.get("models", []):
+        for model in self._display_config.get("models", []):
             name = model["name"]
             self._model_scores[name] = []
             self._model_current_score[name] = 0.0
+            self._model_opp_score[name] = 0.0
             self._model_valid[name] = 0
             self._model_invalid[name] = 0
             self._model_games[name] = 0
@@ -123,31 +135,35 @@ class BenchmarkLiveScreen(Screen):
         self._update_leaderboard()
         self._show_placeholder_state()
 
-        # Start the orchestrator in a background worker
-        self.run_worker(self._start_orchestrator(), exclusive=True, thread=False)
+        # Start the runner in a background worker
+        self.run_worker(self._start_runner(), exclusive=True, thread=False)
 
         # Start polling the event queue at 100ms intervals
         self._poll_timer = self.set_interval(0.1, self._poll_events)
 
-    async def _start_orchestrator(self) -> None:
-        """Start the benchmark orchestrator (mock or real)."""
+    async def _start_runner(self) -> None:
+        """Start the benchmark runner (mock or real)."""
         import os
         use_mock = os.environ.get("TERMINUS_BENCHMARK_MOCK", "").lower() in ("1", "true", "yes")
 
-        if use_mock:
-            from terminus.benchmark.mock_orchestrator import MockOrchestrator
-            self._orchestrator = MockOrchestrator(self._config, self._event_queue)
-        else:
-            from terminus.benchmark.orchestrator import BenchmarkOrchestrator
-            self._orchestrator = BenchmarkOrchestrator(self._config, self._event_queue)
-
         try:
-            await self._orchestrator.run()
+            if use_mock:
+                from terminus.benchmark.mock_orchestrator import MockOrchestrator
+                self._runner = MockOrchestrator(self._display_config, self._event_queue)
+            else:
+                from terminus.benchmark.runner import BenchmarkRunner
+                self._runner = BenchmarkRunner(
+                    config=self._benchmark_config,
+                    event_queue=self._event_queue,
+                    display_config=self._display_config,
+                )
+
+            await self._runner.run()
         except Exception as e:
             await self._event_queue.put(ErrorOccurred(
                 game_index=self._current_game,
                 turn=self._current_turn,
-                model_name="orchestrator",
+                model_name="runner",
                 error_type="engine_error",
                 message=str(e),
                 recoverable=False,
@@ -181,6 +197,7 @@ class BenchmarkLiveScreen(Screen):
         elif isinstance(event, TurnCompleted):
             self._current_turn = event.turn
             self._model_current_score[event.model_name] = event.score
+            self._model_opp_score[event.model_name] = event.opponent_score
             self._last_colony_state[event.model_index] = event.colony_state
 
             if event.action_valid:
@@ -189,12 +206,19 @@ class BenchmarkLiveScreen(Screen):
                 self._model_invalid[event.model_name] = self._model_invalid.get(event.model_name, 0) + 1
 
             icon = "✓" if event.action_valid else "✗"
-            desc = f"  {icon} T{event.turn}: {event.model_name} → {event.action_type}"
+            desc = f"  {icon} T{event.turn:>3}: {event.action_type:<18}"
             if event.rejection_reason:
-                desc += f" ({event.rejection_reason[:40]})"
+                desc += f" ✗ {event.rejection_reason[:30]}"
+            elif event.reasoning_summary:
+                desc += f"  [{event.reasoning_summary}]"
             self._last_actions.append(desc)
-            if len(self._last_actions) > 8:
+            if len(self._last_actions) > 10:
                 self._last_actions.pop(0)
+
+            if event.trade_summary:
+                self._last_trades.append(f"  T{event.turn:>3}: {event.trade_summary}")
+                if len(self._last_trades) > 6:
+                    self._last_trades.pop(0)
 
         elif isinstance(event, GameCompleted):
             name = event.model_name
@@ -231,7 +255,7 @@ class BenchmarkLiveScreen(Screen):
             turn_frac = self._current_turn / max(self._max_turns, 1)
             pct = int((game_frac + turn_frac / self._total_games) * 100)
 
-        speed = self._config.get("speed_multiplier", 1)
+        speed = self._display_config.get("speed_multiplier", 1)
         status = (
             f"  Game {self._current_game}/{self._total_games} │ "
             f"Turn {self._current_turn}/{self._max_turns} │ "
@@ -259,26 +283,27 @@ class BenchmarkLiveScreen(Screen):
             return
         table.clear()
 
-        rows: list[tuple[str, float, float, int]] = []
+        rows: list[tuple] = []
         for name in self._model_scores:
             completed_scores = self._model_scores[name]
             current = self._model_current_score.get(name, 0)
+            opp = self._model_opp_score.get(name, 0)
             valid = self._model_valid.get(name, 0)
             invalid = self._model_invalid.get(name, 0)
             total_actions = valid + invalid
             valid_pct = (valid / total_actions * 100) if total_actions > 0 else 0
             avg = sum(completed_scores) / len(completed_scores) if completed_scores else current
             games_done = self._model_games.get(name, 0)
-            rows.append((name, avg, valid_pct, games_done))
+            rows.append((name, avg, opp, valid_pct, games_done))
 
         rows.sort(key=lambda x: x[1], reverse=True)
 
         num_models = max(len(self._model_scores), 1)
         games_per_model = self._total_games // num_models
 
-        for i, (name, avg, valid_pct, games_done) in enumerate(rows, 1):
+        for i, (name, avg, opp, valid_pct, games_done) in enumerate(rows, 1):
             table.add_row(
-                str(i), name, f"{avg:.1f}", f"{valid_pct:.0f}%", f"{games_done}/{games_per_model}",
+                str(i), name, f"{avg:.1f}", f"{opp:.1f}", f"{valid_pct:.0f}%", f"{games_done}/{games_per_model}",
             )
 
         # Cumulative stats
@@ -319,8 +344,14 @@ class BenchmarkLiveScreen(Screen):
 
         pop = colony.get("population", 0)
         morale = colony.get("morale", 0)
+        llm_score = self._model_current_score.get(
+            self._display_config.get("models", [{}])[self._selected_model].get("name", ""), 0
+        ) if self._display_config.get("models") else 0
+        opp_score = self._model_opp_score.get(
+            self._display_config.get("models", [{}])[self._selected_model].get("name", ""), 0
+        ) if self._display_config.get("models") else 0
         self.query_one("#live-colony-info", Static).update(
-            f"  Population: {pop} │ Morale: {morale:.1f}/10.0"
+            f"  Pop: {pop} │ Morale: {morale:.1f} │ Score: {llm_score:.0f} │ Opp: {opp_score:.0f}"
         )
 
         buildings = colony.get("buildings", [])
@@ -343,7 +374,16 @@ class BenchmarkLiveScreen(Screen):
             self.query_one("#live-workers", Static).update(w_text)
 
         if self._last_actions:
-            self.query_one("#live-actions", Static).update("\n".join(self._last_actions[-6:]))
+            self.query_one("#live-actions", Static).update("\n".join(self._last_actions[-8:]))
+
+        try:
+            trades_widget = self.query_one("#live-trades", Static)
+            if self._last_trades:
+                trades_widget.update("\n".join(self._last_trades))
+            else:
+                trades_widget.update("  No trade activity yet.")
+        except Exception:
+            pass
 
     def _show_placeholder_state(self) -> None:
         """Show placeholder content until events start flowing."""
@@ -357,7 +397,11 @@ class BenchmarkLiveScreen(Screen):
     def _show_results(self, event: BenchmarkCompleted) -> None:
         """Transition to results screen."""
         from terminus.client.screens.benchmark_results import BenchmarkResultsScreen
-        self.app.push_screen(BenchmarkResultsScreen(results=event.results, config=self._config))
+        self.app.push_screen(BenchmarkResultsScreen(
+            results=event.results,
+            config=self._display_config,
+            report_path=event.report_path,
+        ))
 
     # ─── Button Handlers ─────────────────────────────────────────────────────
 
@@ -394,16 +438,20 @@ class BenchmarkLiveScreen(Screen):
         self._paused = not self._paused
         btn = self.query_one("#btn-pause", Button)
         btn.label = "[Resume]" if self._paused else "[Pause]"
-        if self._orchestrator:
-            self._orchestrator.toggle_pause()
+        if self._runner:
+            if self._paused:
+                self._runner.pause()
+            else:
+                self._runner.resume()
         self._update_status()
 
     def action_skip_game(self) -> None:
-        if self._orchestrator:
-            self._orchestrator.skip_current_game()
+        if self._runner:
+            self._runner.skip_current_game()
         self.notify("Skipping current game...", severity="warning")
 
     def action_abort(self) -> None:
-        if self._orchestrator:
-            self._orchestrator.abort()
+        if self._runner:
+            self._runner.abort()
         self.notify("Aborting benchmark...", severity="warning")
+

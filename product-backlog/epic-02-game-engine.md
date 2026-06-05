@@ -1,7 +1,7 @@
 # Epic 2: Game Engine (Server-Side Core Logic)
 
 > **Priority**: P0  
-> **Status**: 42 Done, 3 Scaffolded, 3 TODO (48 total)  
+> **Status**: ✅ All 48 stories done  
 > **Owner**: Core team  
 > **Sprint**: 1 (models), 2-3 (hardening), 5 (achievements)
 
@@ -217,7 +217,7 @@ The game progresses through a fixed sequence of phases. The state machine enforc
 **I want** to join a game lobby, see other players, and ready up  
 **So that** the game doesn't start until enough players are prepared
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Name uniqueness enforced (case-insensitive); remove_player soft-disconnects only, no leave/kick
@@ -795,7 +795,7 @@ Catastrophes are the game's core dramatic beats — timed events that test each 
 **I want** catastrophe descriptions to mention my specific location  
 **So that** the narrative feels personalized and immersive
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Each catastrophe has variant flavor text per location (or at least per vulnerable/resistant)
@@ -973,7 +973,7 @@ Final scoring determines the winner. The formula rewards a balanced colony — p
 
 ### Story 2.7.5 — Per-Round Scoring Snapshots
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Score snapshot taken after each catastrophe resolves
@@ -985,7 +985,7 @@ Final scoring determines the winner. The formula rewards a balanced colony — p
 
 ### Story 2.7.6 — Game Statistics
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Tracked across all players:

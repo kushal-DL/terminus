@@ -58,24 +58,44 @@ P2P TRADING: You can offer resources to opponents or accept/decline their offers
 
 SCORING: population×10 + food×1 + materials×1 + knowledge×3 + gold×2 + building_health×5 + morale×150 + achievements
 
+## STRATEGY GUIDANCE
+
+**ALWAYS take an active action.** PASS is a wasted turn — it produces nothing, builds nothing, and costs you ground against opponents.
+
+**Early game priorities (turns 1–25):**
+1. ALLOCATE_WORKERS first — make sure most workers are farming to secure food, with some on mining for materials.
+2. BUILD a Farm as soon as you have 30 Materials + 10 Gold — it multiplies food output permanently.
+3. BUILD a Mine next for materials, then Housing to grow your population.
+4. Keep food surplus > 0 every turn or population will die.
+
+**Every turn, ask: what is the single highest-value action available?** Then do it.
+
 ## RESPONSE FORMAT
 
-Respond with a single JSON object. No other text.
+Respond with a single JSON object. No other text, no markdown, no explanation.
 
 {{
   "action": "ACTION_TYPE",
   "params": {{ ... }},
   "reasoning": {{
     "factors": [
-      {{"factor": "FACTOR_NAME", "weight": 0.0-1.0}},
-      {{"factor": "FACTOR_NAME", "weight": 0.0-1.0}}
+      {{"factor": "FACTOR_NAME", "weight": 0.6}},
+      {{"factor": "FACTOR_NAME", "weight": 0.4}}
     ]
   }}
 }}
 
+## EXAMPLES
+
+Allocating workers (20 population):
+{{"action": "ALLOCATE_WORKERS", "params": {{"allocation": {{"farming": 8, "mining": 6, "research": 2, "construction": 2, "defense": 1, "medicine": 1}}}}, "reasoning": {{"factors": [{{"factor": "immediate_survival", "weight": 0.6}}, {{"factor": "long_term_growth", "weight": 0.4}}]}}}}
+
+Building a Farm (when you have enough materials and gold):
+{{"action": "BUILD", "params": {{"building_type": "farm"}}, "reasoning": {{"factors": [{{"factor": "long_term_growth", "weight": 0.7}}, {{"factor": "efficiency_optimization", "weight": 0.3}}]}}}}
+
 ACTION TYPES: BUILD, UPGRADE, ALLOCATE_WORKERS, TRADE_BUY, TRADE_SELL, TRADE_OFFER, TRADE_ACCEPT, TRADE_DECLINE, DEMOLISH, REPAIR, PASS
 
-REASONING FACTORS (select 2-4, weights must sum to 1.0):
+REASONING FACTORS (select 2–4, weights must sum to 1.0):
 resource_bottleneck, long_term_growth, opponent_pressure, catastrophe_preparation, market_opportunity, efficiency_optimization, defensive_positioning, cooperative_opportunity, specialization_synergy, immediate_survival, information_gathering, risk_diversification"""
 
 
@@ -178,15 +198,68 @@ def build_turn_message(state: BenchmarkGameState, available_actions: list[Availa
             lines.append(f"- [{offer.offer_id[:8]}] to {offer.to_player}: {offer_str} for {request_str} ({offer.ticks_remaining} ticks left)")
         lines.append("")
 
-    # Available actions
-    lines.append("## AVAILABLE ACTIONS")
+    # Available actions — with params_hint so the model knows the exact JSON shape
+    lines.append("## AVAILABLE ACTIONS (choose one — PASS wastes your turn)")
+    build_actions = []
     for a in available_actions:
-        cost_str = f" (Cost: {a.cost})" if a.cost else ""
-        lines.append(f"- {a.action_type}: {a.description}{cost_str}")
+        cost_str = f" | Cost: {a.cost}" if a.cost else ""
+        hint_str = ""
+        if a.params_hint:
+            import json as _json
+            hint_str = f" | params: {_json.dumps(a.params_hint)}"
+        lines.append(f"- {a.action_type}: {a.description}{cost_str}{hint_str}")
+        if a.action_type == "BUILD":
+            build_actions.append(a)
     lines.append("")
-    lines.append("Choose one action. Respond with JSON only.")
+
+    # Concrete recommendation to anchor the model
+    rec = _pick_recommendation(state, available_actions)
+    if rec:
+        lines.append(f"RECOMMENDED: {rec}")
+        lines.append("")
+
+    lines.append("Respond with JSON only. No other text.")
 
     return "\n".join(lines)
+
+
+def _pick_recommendation(state: BenchmarkGameState, actions: list[AvailableAction]) -> str:
+    """Return a short concrete recommendation to anchor the model away from PASS."""
+    action_types = {a.action_type: a for a in actions}
+
+    # Priority 1: Allocate workers if all workers are unallocated or heavily misallocated
+    w = state.workers
+    total_allocated = w.farming + w.mining + w.research + w.construction + w.defense + w.medicine
+    if "ALLOCATE_WORKERS" in action_types and total_allocated < state.population:
+        farming = max(1, int(state.population * 0.5))
+        mining = max(1, int(state.population * 0.3))
+        rest = state.population - farming - mining
+        return (
+            f"Use ALLOCATE_WORKERS — put ~{farming} on farming, ~{mining} on mining, "
+            f"distribute {rest} across research/construction/defense."
+        )
+
+    # Priority 2: Build something if affordable
+    if "BUILD" in action_types:
+        build_action = action_types["BUILD"]
+        hint = build_action.params_hint or {}
+        bt = hint.get("building_type", "farm")
+        return f"Use BUILD with params_hint {hint} — buildings compound production every turn."
+
+    # Priority 3: Suggest worker reallocation if farming is dangerously low
+    if "ALLOCATE_WORKERS" in action_types and state.population > 0:
+        food_per_tick = state.production.food if state.production else 0
+        if food_per_tick < state.food_consumption * 1.2:
+            return (
+                "Use ALLOCATE_WORKERS — shift more workers to farming immediately, "
+                "food production is dangerously low."
+            )
+
+    # Priority 4: Buy cheap resources
+    if "TRADE_BUY" in action_types and state.resources.gold > 10:
+        return "Use TRADE_BUY to invest your gold in production resources."
+
+    return ""
 
 
 # ─── History Formatting ───────────────────────────────────────────────────────

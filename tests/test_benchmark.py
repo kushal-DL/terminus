@@ -380,12 +380,33 @@ class TestScreenTransitions:
         assert BenchmarkLiveScreen is not None
         assert BenchmarkResultsScreen is not None
 
-    def test_live_screen_instantiation(self, benchmark_config: dict) -> None:
-        """BenchmarkLiveScreen should instantiate with config."""
+    def _make_live_screen(self, display_config: dict) -> "BenchmarkLiveScreen":
+        """Build a BenchmarkLiveScreen from a plain display_config dict."""
+        from terminus.benchmark.schemas import BenchmarkConfig, ModelConfig, OpponentType
         from terminus.client.screens.benchmark_live import BenchmarkLiveScreen
 
-        screen = BenchmarkLiveScreen(benchmark_config)
-        assert screen._config == benchmark_config
+        model_configs = [
+            ModelConfig(
+                name=m["name"],
+                provider="openai",
+                endpoint=m["url"],
+                model=m["model_id"],
+                api_key=m["api_key"],
+            )
+            for m in display_config["models"]
+        ]
+        benchmark_config = BenchmarkConfig(
+            models=model_configs,
+            games_per_matchup=display_config.get("num_games", 2),
+            max_turns=max(20, display_config.get("max_turns", 20)),
+            opponents=[OpponentType.RANDOM, OpponentType.GREEDY][: display_config.get("num_opponents", 2)],
+        )
+        return BenchmarkLiveScreen(benchmark_config, display_config)
+
+    def test_live_screen_instantiation(self, benchmark_config: dict) -> None:
+        """BenchmarkLiveScreen should instantiate with config."""
+        screen = self._make_live_screen(benchmark_config)
+        assert screen._display_config == benchmark_config
         assert screen._total_games == 2 * 2 * 2
 
     def test_results_screen_instantiation(self, benchmark_config: dict) -> None:
@@ -406,9 +427,7 @@ class TestScreenTransitions:
 
     def test_live_screen_event_handling(self, benchmark_config: dict) -> None:
         """Live screen should handle events without crashing (no mount)."""
-        from terminus.client.screens.benchmark_live import BenchmarkLiveScreen
-
-        screen = BenchmarkLiveScreen(benchmark_config)
+        screen = self._make_live_screen(benchmark_config)
         # Test that _handle_event processes events correctly on internal state
         event = GameStarted(game_index=0, model_name="ModelA", model_index=0, opponent_strategy="balanced", seed=42)
         screen._handle_event(event)
@@ -425,9 +444,7 @@ class TestScreenTransitions:
 
     def test_live_screen_invalid_action_tracking(self, benchmark_config: dict) -> None:
         """Live screen should track invalid actions separately."""
-        from terminus.client.screens.benchmark_live import BenchmarkLiveScreen
-
-        screen = BenchmarkLiveScreen(benchmark_config)
+        screen = self._make_live_screen(benchmark_config)
         event = TurnCompleted(
             game_index=0, turn=1, max_turns=15, model_name="ModelA", model_index=0,
             action_type="BUILD", action_valid=False, rejection_reason="Not enough resources",

@@ -11,6 +11,14 @@ from textual.screen import Screen
 from textual.widgets import Button, Footer, Input, Label, Static, Switch
 from textual.reactive import reactive
 
+from terminus.benchmark.schemas import (
+    BenchmarkConfig,
+    DimensionWeights,
+    ModelConfig,
+    OpponentType,
+    WeightPreset,
+)
+
 
 # ─── Weight Presets (from metrics.md) ─────────────────────────────────────────
 DIMENSION_NAMES = [
@@ -695,8 +703,21 @@ class BenchmarkSetupScreen(Screen):
                 enabled.append(True)
                 weights.append(1.0)
 
-        config = {
-            "models": [m for m in self._models if m["status"] == "ready"],
+        ready_models = [m for m in self._models if m["status"] == "ready"]
+        if not ready_models:
+            self.notify("No models are ready. Test connections first.", severity="error")
+            return
+
+        try:
+            benchmark_config = self.build_benchmark_config()
+        except Exception as exc:
+            self.notify(f"Config error: {exc}", severity="error")
+            return
+
+        # Keep the raw dict for the live screen's display helpers that still
+        # reference plain-dict fields (model tabs, estimates, etc.)
+        display_config = {
+            "models": ready_models,
             "num_games": self.num_games,
             "speed_multiplier": self.speed_multiplier,
             "num_catastrophes": self.num_catastrophes,
@@ -707,12 +728,98 @@ class BenchmarkSetupScreen(Screen):
             "dimension_weights": weights,
         }
 
-        if not config["models"]:
-            self.notify("No models are ready. Test connections first.", severity="error")
-            return
-
         from terminus.client.screens.benchmark_live import BenchmarkLiveScreen
-        self.app.push_screen(BenchmarkLiveScreen(config))
+        self.app.push_screen(BenchmarkLiveScreen(benchmark_config, display_config))
+
+    # ─── Config Builder ──────────────────────────────────────────────────────
+
+    def build_benchmark_config(self) -> BenchmarkConfig:
+        """Translate TUI state into a validated BenchmarkConfig.
+
+        Raises ValidationError if any field is invalid.
+        """
+        # ── ModelConfig list ──────────────────────────────────────────────
+        model_configs: list[ModelConfig] = []
+        for m in self._models:
+            if m["status"] != "ready":
+                continue
+            provider_raw = m["provider"].lower()
+            # "openai" covers Ollama too (same API shape); map display names
+            provider_map = {
+                "openai": "openai",
+                "anthropic": "anthropic",
+                "google": "google",
+                "ollama": "ollama",
+            }
+            provider = provider_map.get(provider_raw, "openai")
+
+            api_key: str | None = m.get("api_key") or None
+            model_configs.append(
+                ModelConfig(
+                    name=m["name"],
+                    provider=provider,  # type: ignore[arg-type]
+                    endpoint=m["url"],
+                    model=m["model_id"],
+                    api_key=api_key,
+                )
+            )
+
+        # ── Opponents list from num_opponents ─────────────────────────────
+        # Quick=3: random, greedy, balanced
+        # Standard=6: all six
+        # Deep=8: all six + adversarial repeated twice (still all six, capped)
+        all_opponents = [
+            OpponentType.RANDOM,
+            OpponentType.GREEDY,
+            OpponentType.BALANCED,
+            OpponentType.RUSH,
+            OpponentType.TURTLE,
+            OpponentType.ADVERSARIAL,
+        ]
+        opponents = all_opponents[: min(self.num_opponents, len(all_opponents))]
+
+        # ── Weight preset or custom ───────────────────────────────────────
+        preset_map = {name.lower(): name for name in PRESETS}
+        matched_preset = preset_map.get(self.active_preset.lower(), "balanced")
+        try:
+            weight_preset = WeightPreset(matched_preset.lower())
+        except ValueError:
+            weight_preset = WeightPreset.CUSTOM
+
+        # Read current weight inputs
+        weights_list: list[float] = []
+        for i in range(8):
+            try:
+                val = float(self.query_one(f"#input-weight-{i}", Input).value)
+            except Exception:
+                val = 1.0
+            weights_list.append(val)
+
+        preset_weights = list(PRESETS.get(matched_preset, [1.0] * 8))
+        custom_weights: DimensionWeights | None = None
+        if weights_list != preset_weights:
+            weight_preset = WeightPreset.CUSTOM
+            custom_weights = DimensionWeights(
+                coherence=weights_list[0],
+                arithmetic=weights_list[1],
+                triage=weights_list[2],
+                error_recognition=weights_list[3],
+                pivot=weights_list[4],
+                degradation=weights_list[5],
+                opportunity_cost=weights_list[6],
+                game_theory=weights_list[7],
+            )
+
+        return BenchmarkConfig(
+            models=model_configs,
+            games_per_matchup=self.num_games,
+            max_turns=self.max_turns,
+            speed_multiplier=self.speed_multiplier,  # type: ignore[arg-type]
+            seed_mode="fixed" if self.seed_fixed else "random",
+            opponents=opponents,
+            weight_preset=weight_preset,
+            custom_weights=custom_weights,
+        )
 
     # ─── Actions ─────────────────────────────────────────────────────────────
 
