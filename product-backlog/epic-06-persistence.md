@@ -1,7 +1,7 @@
 # Epic 6: Persistence & Reliability
 
 > **Priority**: P1  
-> **Status**: ⬜ TODO  
+> **Status**: ✅ All 9 stories done  
 > **Sprint**: 4-5  
 > **Depends on**: Epic 2 (stable engine), Epic 3 (server running)
 
@@ -15,7 +15,7 @@
 **I want** the game state saved to disk periodically  
 **So that** a crash doesn't lose the entire game
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] SQLite database at `~/.terminus/games/{game_id}.db`
@@ -33,7 +33,7 @@
 **I want** to resume a game after a server crash  
 **So that** a brief outage doesn't ruin an ongoing session
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] On server start: check for existing `.db` files in `~/.terminus/games/`
@@ -52,7 +52,7 @@
 **I want** my colony to survive if I briefly disconnect  
 **So that** network hiccups don't destroy my game progress
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Colony continues producing/consuming while disconnected
@@ -70,7 +70,7 @@
 **I want** a full log of game actions  
 **So that** games can potentially be replayed or analyzed
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Every action logged: `{tick, player_id, action_type, params, result}`
@@ -89,7 +89,7 @@
 **I want** the server to gracefully reject invalid inputs  
 **So that** malicious or buggy clients can't crash the server
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] All endpoints use Pydantic models for request validation
@@ -107,7 +107,7 @@
 **I want** clear feedback when my connection drops  
 **So that** I know what's happening and can act
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Red banner: "Connection lost — retrying in Xs..."
@@ -125,7 +125,7 @@
 **I want** the server to handle 250 concurrent WebSocket connections  
 **So that** large games work without degradation
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Load test script: spawn 250 WebSocket clients
@@ -143,7 +143,7 @@
 **I want** Ctrl+C to cleanly save and notify players  
 **So that** an intentional shutdown doesn't corrupt data
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] SIGINT/SIGTERM handler registered
@@ -162,7 +162,7 @@
 **I want** strict input validation at all boundaries  
 **So that** the server is secure against injection and abuse
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Player names: 1-20 chars, alphanumeric + spaces only, stripped

@@ -128,7 +128,7 @@
 
 ### Story 8.2.2 — Multiplayer Concurrency
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] 5 concurrent async clients performing actions simultaneously
@@ -141,7 +141,7 @@
 
 ### Story 8.2.3 — Reconnection Test
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Client disconnects WebSocket mid-game
@@ -154,7 +154,7 @@
 
 ### Story 8.2.4 — Load Test (250 Connections)
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Script spawns 250 WebSocket clients
@@ -170,7 +170,7 @@
 
 ### Story 8.3.1 — Full Playtest (3-4 Players)
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] 3-4 real players complete a 45-minute Standard game
@@ -183,7 +183,7 @@
 
 ### Story 8.3.2 — Cross-Platform Verification
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Windows Terminal: renders correctly
@@ -196,7 +196,7 @@
 
 ### Story 8.3.3 — Fresh Install Test
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Clean Python 3.11+ machine (no prior deps)

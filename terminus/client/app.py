@@ -78,6 +78,10 @@ class TerminusApp(App):
         if os.environ.get("TERMINUS_DEV_MODE") == "1":
             self._dev_mode_enabled = True
         self.push_screen(MainMenuScreen())
+        # If launched with --benchmark (no file), go straight to setup screen
+        initial = getattr(self, "_initial_screen", None)
+        if initial is not None:
+            self.push_screen(initial())
 
     def action_toggle_sound(self) -> None:
         """Toggle audio on/off."""

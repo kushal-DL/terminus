@@ -1,7 +1,7 @@
 # Epic 9: Packaging & Distribution
 
 > **Priority**: P0 (config), P2 (distribution)  
-> **Status**: ✅ Config done, ⬜ Distribution TODO  
+> **Status**: ✅ All 9 stories done  
 > **Sprint**: 1 (config), 5+ (distribution)
 
 ---
@@ -71,7 +71,7 @@
 
 ### Story 9.2.1 — Git Install Documentation
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Document in README: `pip install git+https://github.com/<user>/terminus.git`
@@ -83,7 +83,7 @@
 
 ### Story 9.2.2 — PyInstaller Single Executable
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] `terminus.spec` PyInstaller spec file
@@ -97,7 +97,7 @@
 
 ### Story 9.2.3 — GitHub Release Workflow
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] GitHub Actions workflow: `.github/workflows/release.yml`
@@ -110,7 +110,7 @@
 
 ### Story 9.2.4 — PyPI Publication
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Package name: `terminus-game` (avoid conflicts)

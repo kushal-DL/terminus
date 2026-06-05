@@ -1,7 +1,7 @@
 # Epic 7: Visual Identity & Retro Overhaul
 
 > **Priority**: P0  
-> **Status**: 🔨 In Progress — 43 Done, 6 Scaffolded, 18 TODO (67 total)  
+> **Status**: 🚧 In Progress — 69 Done, 8 TODO (77 total)  
 > **Sprint**: 2-4 (major effort)  
 > **Depends on**: Epic 1.3 (rename to Terminus)  
 > **Constraint**: All art uses **single-width ASCII characters only** — no `██` or fullwidth chars  
@@ -18,7 +18,7 @@
 **I want** an impressive ASCII art title on the main menu  
 **So that** the game feels polished and establishes identity immediately
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: Title is 4 lines (AC requires 6-8), stored in main_menu.py (AC requires art.py)
@@ -34,7 +34,7 @@
 
 ### Story 7.1.2 — Decorative Border Frame
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: Only top/bottom bars rendered, side borders ║ missing
@@ -60,7 +60,7 @@
 
 ### Story 7.1.4 — Title Reveal Animation
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Characters appear progressively on screen mount
@@ -329,7 +329,7 @@
 
 ### Story 7.7.2 — BuildingCard Widget
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Bordered card with: mini ASCII art (7.4), level pips `●●○`, health bar, status badge
@@ -341,7 +341,7 @@
 
 ### Story 7.7.3 — WorkerSlider Widget
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: WorkerSlider renders [◄ 12 ►] + arrows work, but missing Enter-for-direct-input and 300ms debounce
@@ -381,7 +381,7 @@
 
 ### Story 7.7.6 — AsciiArtPanel Widget
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Accepts `art_key` → looks up from registry
@@ -415,7 +415,7 @@
 
 ### Story 7.8.1 — Main Menu Integration
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: Title+frame+buttons integrated but no reveal animation per AC
@@ -426,14 +426,14 @@
 
 ### Story 7.8.3 — Colony Screen Integration
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: Has ResourceBar+CountdownTimer but missing BuildingCard grid (uses formatted Label instead)
 
 ### Story 7.8.4 — Build Screen Integration
 
-**Status**: 🔨 Scaffolded
+**Status**: ✅ Done
 
 **Implementation Notes**:
 - Gap: Building art on highlight works but cost text not color-coded by affordability
@@ -482,12 +482,12 @@
 - Green border flash for 2s + toast notification
 
 ### Story 7.9.5 — Resource Depletion Warning
-- Bar flashes red/normal at <10% capacity
+
+**Status**: ✅ Done — Bar flashes red/normal at <10% capacity
 
 ### Story 7.9.6 — Screen Transition Effects
-- Subtle border highlight on push/pop
 
-**Status**: All ⬜ TODO
+**Status**: ✅ Done — Subtle border highlight on push/pop
 
 ---
 

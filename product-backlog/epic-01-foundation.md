@@ -1,7 +1,7 @@
 # Epic 1: Project Foundation & Infrastructure
 
 > **Priority**: P0  
-> **Status**: ✅ Done (1.1, 1.2) | ⬜ TODO (1.3 Rename)  
+> **Status**: ✅ All 16 stories done (1.1, 1.2, 1.3 Rename complete)  
 > **Owner**: Core team  
 > **Sprint**: 1 (scaffolding), 2 (rename)
 
@@ -353,7 +353,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** the package directory renamed from `colony/` to `terminus/`  
 **So that** the package name matches the game's identity
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Directory `colony/` renamed to `terminus/`
@@ -369,7 +369,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** all `from colony.` and `import colony` statements updated to `terminus`  
 **So that** the package is importable under its new name
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Every `.py` file: `from colony.` → `from terminus.`
@@ -388,7 +388,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** `pyproject.toml` updated for the new name  
 **So that** the package installs and runs under the `terminus` name
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] `[project] name = "terminus-game"`
@@ -406,7 +406,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** `test_engine.py` updated with new import paths  
 **So that** the integration test still passes after rename
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] `from terminus.server.engine import GameEngine`
@@ -421,7 +421,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** README and all docs updated with Terminus branding  
 **So that** the game presents consistently under its new name
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] `README.md`: all "Colony" → "Terminus", all `colony` commands → `terminus`
@@ -436,7 +436,7 @@ Rename the entire package from `colony` to `terminus`. This is a mechanical refa
 **I want** all user-facing text updated from Colony to Terminus  
 **So that** the game UI shows the correct name everywhere
 
-**Status**: ⬜ TODO
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] `TerminusApp` class name (was `ColonyApp`)

@@ -79,7 +79,10 @@ class OpenAICompatAdapter(LLMAdapter):
         turn_message: str,
     ) -> list[dict[str, str]]:
         msgs: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+        # Skip any system message already in history — we prepend a fresh one above
         for m in history:
+            if m.role == "system":
+                continue
             msgs.append({"role": m.role, "content": m.content})
         msgs.append({"role": "user", "content": turn_message})
         return msgs
@@ -88,18 +91,29 @@ class OpenAICompatAdapter(LLMAdapter):
         payload: dict = {
             "model": self.config.model,
             "messages": messages,
-            "max_tokens": 500,
+            "max_tokens": 1024 if self.config.extra_body else 500,
             "temperature": 0.3,
         }
         # Use JSON mode for models that support it
         if self.config.provider == "openai":
             payload["response_format"] = {"type": "json_object"}
 
+        # Merge any extra fields (e.g. reasoning_budget, enable_thinking for Nemotron)
+        if self.config.extra_body:
+            payload.update(self.config.extra_body)
+
+        # Streaming required when extra_body requests thinking mode
+        needs_stream = bool(self.config.extra_body)
+        if needs_stream:
+            payload["stream"] = True
+
         headers = self._build_headers()
         timeout = self.config.timeout_seconds
 
         try:
             async with httpx.AsyncClient(timeout=timeout) as client:
+                if needs_stream:
+                    return await self._call_streaming(client, payload, headers)
                 resp = await client.post(self._endpoint, json=payload, headers=headers)
         except httpx.TimeoutException:
             raise LLMError("timeout", f"Request timed out after {timeout}s")
@@ -123,9 +137,55 @@ class OpenAICompatAdapter(LLMAdapter):
         if not content:
             raise LLMError("parse_error", "Empty response content")
 
-        # Check for refusal
         finish_reason = data["choices"][0].get("finish_reason", "")
         if finish_reason == "content_filter":
             raise LLMError("refusal", "Response blocked by content filter")
 
+        return content
+
+    async def _call_streaming(
+        self,
+        client: "httpx.AsyncClient",
+        payload: dict,
+        headers: dict,
+    ) -> str:
+        """Consume a streaming SSE response and return the final content."""
+        import json as _json
+
+        content_parts: list[str] = []
+        try:
+            async with client.stream("POST", self._endpoint, json=payload, headers=headers) as resp:
+                if resp.status_code == 429:
+                    retry_after = float(resp.headers.get("Retry-After", "5"))
+                    raise LLMError("rate_limit", "Rate limited", retry_after=retry_after, status_code=429)
+                elif resp.status_code >= 500:
+                    body = await resp.aread()
+                    raise LLMError("api_error", body.decode()[:200], status_code=resp.status_code)
+                elif resp.status_code != 200:
+                    body = await resp.aread()
+                    raise LLMError("api_error", f"HTTP {resp.status_code}: {body.decode()[:200]}", status_code=resp.status_code)
+
+                async for line in resp.aiter_lines():
+                    if not line or not line.startswith("data: "):
+                        continue
+                    data_str = line[6:]
+                    if data_str.strip() == "[DONE]":
+                        break
+                    try:
+                        chunk = _json.loads(data_str)
+                        delta = chunk.get("choices", [{}])[0].get("delta", {})
+                        # Collect the actual response content (not the internal reasoning)
+                        piece = delta.get("content") or ""
+                        if piece:
+                            content_parts.append(piece)
+                    except (_json.JSONDecodeError, IndexError):
+                        continue
+        except httpx.TimeoutException:
+            raise LLMError("timeout", f"Streaming request timed out after {self.config.timeout_seconds}s")
+        except httpx.ConnectError:
+            raise LLMError("connection_error", f"Cannot connect to {self._endpoint}")
+
+        content = "".join(content_parts).strip()
+        if not content:
+            raise LLMError("parse_error", "Streaming response produced no content")
         return content

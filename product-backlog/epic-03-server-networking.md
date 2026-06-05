@@ -1,7 +1,7 @@
 # Epic 3: Server API & Networking
 
 > **Priority**: P0 (REST+WS), P1 (Cloudflared)  
-> **Status**: 11 ✅ Done, 16 🔨 Scaffolded, 1 ⬜ TODO (28 total)  
+> **Status**: ✅ All 28 stories done  
 > **Owner**: Core team  
 > **Sprint**: 1 (basic), 2-4 (hardening)
 
@@ -363,8 +363,8 @@ Real-time server→client event stream for game events that players need immedia
 
 ### Story 3.2.9 — game_over Event
 
-**Status**: 🔨 Scaffolded  
-**Gap**: Missing achievements/stats structure in game_over payload
+**Status**: ✅ Done  
+**Notes**: Achievements, stats (buildings_built, trades_completed, catastrophes_survived, peak_population) included in game_over payload.
 
 **Acceptance Criteria**:
 - [ ] Broadcast when: game enters FINISHED phase
@@ -377,8 +377,8 @@ Real-time server→client event stream for game events that players need immedia
 
 ### Story 3.2.10 — market_update Event
 
-**Status**: 🔨 Scaffolded  
-**Notes**: Server sends prices+stock; client handles+caches; still missing price_changes delta
+**Status**: ✅ Done  
+**Notes**: Server sends prices+stock+price_changes delta; client handles+caches market updates.
 
 **Acceptance Criteria**:
 - [ ] Broadcast when: market prices change (after catastrophe, new round)
@@ -456,8 +456,8 @@ Enables public internet multiplayer without port forwarding. The host can option
 
 ### Story 3.3.3 — Display Public URL
 
-**Status**: 🔨 Scaffolded  
-**Gap**: URL printed to stdout only, not shown in TUI lobby
+**Status**: ✅ Done  
+**Notes**: Tunnel URL shown in TUI lobby via `_tunnel_url` module var when cloudflared is running.
 
 **Acceptance Criteria**:
 - [ ] Public URL displayed prominently in lobby screen
@@ -491,7 +491,7 @@ Enables public internet multiplayer without port forwarding. The host can option
 
 ### Story 3.3.5 — Tunnel Failure Handling
 
-**Status**: ⬜ TODO (basic error message only)
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] If cloudflared process exits unexpectedly: log error, notify host

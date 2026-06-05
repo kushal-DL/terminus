@@ -91,6 +91,8 @@ class ModelConfig(BaseModel):
     rate_limit_rpm: int | None = Field(None, ge=1)
     rate_limit_concurrent: int | None = Field(None, ge=1)
     timeout_seconds: float = Field(30.0, ge=5.0, le=300.0)
+    # Extra fields merged verbatim into the API request payload (e.g. reasoning_budget, enable_thinking)
+    extra_body: dict = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def validate_auth(self) -> "ModelConfig":
