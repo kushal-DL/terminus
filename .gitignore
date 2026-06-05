@@ -15,4 +15,4 @@ venv/
 env/
 .idea/
 .vscode/
-*.spec
+# *.spec intentionally NOT ignored — terminus.spec is tracked
