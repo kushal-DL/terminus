@@ -20,3 +20,8 @@ benchmark-results/
 tmp_test_report/
 benchmark-single-test.json
 benchmark-nemotron.json
+benchmark-step.json
+benchmark-gemma.json
+benchmark-ising.json
+_workspace/
+uv.lock
