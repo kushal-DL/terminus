@@ -15,4 +15,8 @@ venv/
 env/
 .idea/
 .vscode/
-# *.spec intentionally NOT ignored — terminus.spec is tracked
+*.spec
+benchmark-results/
+tmp_test_report/
+benchmark-single-test.json
+benchmark-nemotron.json
