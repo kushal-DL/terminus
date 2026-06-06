@@ -44,11 +44,15 @@ benchmark-config.example.json  # Example benchmark config
 ## How to Run
 
 ```bash
-# Easiest — Windows double-click launcher (handles venv + deps automatically)
-play.bat          # or: bash play.sh on Mac/Linux
+# ── For users ───────────────────────────────────────────────────────────
+# Windows: double-click play.bat (handles venv + deps automatically)
+# Mac/Linux:
+bash play.sh
 
-# Install (editable) for development
-pip install -e ".[dev]"
+# ── For developers (editable install) ───────────────────────────────────
+python -m venv .venv && source .venv/bin/activate   # Mac/Linux
+# .venv\Scripts\activate                             # Windows
+python -m pip install -e ".[dev]"
 
 # Run TUI + server
 python -m terminus

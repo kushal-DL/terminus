@@ -27,7 +27,7 @@
 
 **Acceptance Criteria**:
 - [ ] All deps pinned with compatible ranges: `textual>=0.40`, `fastapi>=0.100`, etc.
-- [ ] `uv pip install .` resolves without conflicts
+- [ ] `python -m pip install -e .` resolves without conflicts
 - [ ] No unnecessary transitive deps
 
 ---
@@ -44,13 +44,13 @@
 
 ### Story 9.1.4 — README
 
-**Status**: ✅ Done (needs rename update)
+**Status**: ✅ Done
 
 **Acceptance Criteria**:
 - [ ] Overview: what the game is, 2-3 sentences
-- [ ] Install: `pip install .` or `pip install git+<url>`
+- [ ] Install: clone repo + double-click `play.bat` (Windows) or `bash play.sh` (Mac/Linux)
 - [ ] Quickstart: create game, join game, basic controls
-- [ ] Requirements: Python 3.11+, terminal 80×24+
+- [ ] Requirements: Python 3.11+, terminal 120×30+
 - [ ] Optional: cloudflared for public multiplayer
 
 ---
@@ -69,15 +69,15 @@
 
 ## Feature 9.2 — Distribution Options
 
-### Story 9.2.1 — Git Install Documentation
+### Story 9.2.1 — Launcher Scripts
 
 **Status**: ✅ Done
 
 **Acceptance Criteria**:
-- [ ] Document in README: `pip install git+https://github.com/<user>/terminus.git`
-- [ ] Works without cloning repo
-- [ ] Installs all dependencies automatically
-- [ ] Console script `terminus` available after install
+- [ ] `play.bat` — Windows double-click launcher (creates venv, installs deps, launches game)
+- [ ] `play.sh` — Mac/Linux equivalent with version check
+- [ ] Both handle first-run setup automatically
+- [ ] Subsequent launches are instant (venv already exists)
 
 ---
 
@@ -110,11 +110,6 @@
 
 ### Story 9.2.4 — PyPI Publication
 
-**Status**: ✅ Done
+**Status**: ✅ Done (deferred as primary install method — launcher scripts are now preferred)
 
-**Acceptance Criteria**:
-- [ ] Package name: `terminus-game` (avoid conflicts)
-- [ ] `python -m build` produces valid wheel + sdist
-- [ ] `twine check dist/*` passes
-- [ ] Published to PyPI: `pip install terminus-game`
-- [ ] Version managed in `pyproject.toml` (single source of truth)
+**Notes**: Package is published as `terminus-game` but PyPI is no longer the primary install method. Users should clone the repo and use `play.bat` / `play.sh`.
