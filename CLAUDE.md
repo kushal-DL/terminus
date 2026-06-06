@@ -28,10 +28,15 @@ terminus/
 ├── data/            # Static game data (buildings, catastrophes, etc.)
 ├── config.py        # Global constants
 └── __main__.py      # CLI entry point
-tests/               # pytest suite (579 tests, all passing)
+tests/               # pytest suite (594 tests, all passing)
 docs/
 └── llm-benchmark/   # Benchmark documentation (metrics, schemas, prompts, UI flow)
     └── implementation-plan.md   # ← AUTHORITATIVE phase status document
+product-backlog/     # Per-epic backlog files (BACKLOG.md + epic-*.md)
+play.bat             # Windows double-click launcher
+play.sh              # Mac/Linux launcher
+run_benchmark.py     # Benchmark runner helper (sets API key in-process)
+benchmark-config.example.json  # Example benchmark config
 ```
 
 ---
@@ -39,20 +44,29 @@ docs/
 ## How to Run
 
 ```bash
-# Install (editable)
+# Easiest — Windows double-click launcher (handles venv + deps automatically)
+play.bat          # or: bash play.sh on Mac/Linux
+
+# Install (editable) for development
 pip install -e ".[dev]"
 
 # Run TUI + server
 python -m terminus
 
-# Run tests (all 579 should pass)
+# Run all tests (594 passing)
 pytest
 
-# Run only benchmark tests (fast, ~2s)
+# Run fast subset only (skips slow benchmark integration tests, ~10s)
+pytest -m "not slow"
+
+# Run only benchmark unit tests (~2s)
 pytest tests/test_metrics_tier1.py tests/test_dimensions_tier2.py tests/test_opponents.py tests/test_orchestrator_v2.py
 
-# Run with mock benchmark (no real LLM)
+# Run benchmark with mock LLM (no real API key needed)
 TERMINUS_BENCHMARK_MOCK=1 python -m terminus
+
+# Run benchmark headlessly
+python run_benchmark.py benchmark-config.example.json
 ```
 
 ---
@@ -112,10 +126,16 @@ BenchmarkResult → export (JSON/HTML/CSV/Markdown)
 ### What's left
 
 The LLM benchmark feature is complete. Optional quality-of-life items only:
-- Keyring-based API key storage (env vars currently used)
+- Keyring-based API key storage (env vars + `run_benchmark.py` currently used)
 - Jinja2 + Chart.js HTML with interactive radar charts (current HTML is string-template based)
-- Statistical analysis (scipy-based CIs, Phase 5.6)
-- Phase C — richer live viewer (LLM reasoning text, opponent score, trade activity)
+- `scipy` for statistical significance tests (bootstrap CIs work without it)
+
+### Known LLM behaviour notes
+
+- **Windows `set VAR=val && python` doesn't propagate env vars** — use `run_benchmark.py` which sets the key inside Python before running
+- **Models choosing PASS every turn** usually means `401 Unauthorized` — the API key isn't reaching the adapter. Run with `--verbose` to confirm.
+- **Thinking/reasoning models** (Nemotron, o1, etc.) need `extra_body` in `ModelConfig` and `timeout_seconds` ≥ 120. Set `reasoning_budget` low (512) to keep latency under 2 min/turn.
+- **`speed_multiplier`** should be 1 for slow models (reasoning models) — high multipliers compress catastrophe timing so much the game ends before the model finishes thinking.
 
 ---
 
@@ -176,6 +196,8 @@ The LLM benchmark feature is complete. Optional quality-of-life items only:
 - Anthropic adapter (`adapters/anthropic.py`): separates system prompt from messages (API format requirement)
 - All adapters use `httpx.AsyncClient` with configurable timeout
 - Token counting strategy: OpenAI=tiktoken exact, Anthropic=char÷4 estimate, Google=countTokens API
+- `ModelConfig.extra_body` — dict merged verbatim into the API request payload (used for `reasoning_budget`, `enable_thinking` on Nemotron/o1 etc.)
+- Streaming is triggered automatically when `extra_body` is non-empty (required for thinking models)
 
 ---
 
