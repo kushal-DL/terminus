@@ -97,14 +97,24 @@ class BenchmarkResult:
         metrics_engine = MetricsEngine(config)
         scorer = DimensionScorer(config)
 
+        # Compute reference score = best average score across all models (for participation)
+        reference_score: float = max(
+            (sum(r.final_score for r in recs) / len(recs))
+            for recs in by_model.values()
+        ) if by_model else None  # type: ignore[assignment]
+
         model_results: dict[str, ModelResult] = {}
 
         for model_name, recs in by_model.items():
             # Tier-1 metrics (averaged across all games for this model)
             metrics = metrics_engine.compute_all(recs)
 
-            # Tier-2 dimension scores
-            dim_report = scorer.score(metrics, recs, model_name=model_name)
+            # Tier-2 dimension scores — pass reference_score for participation (Option B)
+            dim_report = scorer.score(
+                metrics, recs,
+                model_name=model_name,
+                reference_score=reference_score,
+            )
 
             # Game-level stats
             scores = [r.final_score for r in recs]

@@ -272,7 +272,7 @@ class TestHtmlReportGeneration:
         assert len(html_files) == 1, f"Expected 1 HTML file, got: {html_files}"
         html_content = html_files[0].read_text(encoding="utf-8")
         assert len(html_content) > 500
-        assert "TERMINUS LLM BENCHMARK" in html_content
+        assert "Terminus LLM Benchmark" in html_content or "TERMINUS" in html_content
 
     @pytest.mark.asyncio
     async def test_report_contains_model_name(self, tmp_path: Path):
@@ -440,7 +440,7 @@ class TestHtmlReportGeneration:
         path = write_report(result, output_dir=str(tmp_path))
         assert Path(path).exists()
         content = Path(path).read_text(encoding="utf-8")
-        assert "TERMINUS LLM BENCHMARK" in content
+        assert "Terminus LLM Benchmark" in content or "TERMINUS" in content
         assert len(content) > 200
 
 

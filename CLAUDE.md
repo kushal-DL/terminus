@@ -44,11 +44,15 @@ benchmark-config.example.json  # Example benchmark config
 ## How to Run
 
 ```bash
-# Easiest — Windows double-click launcher (handles venv + deps automatically)
-play.bat          # or: bash play.sh on Mac/Linux
+# ── For users ───────────────────────────────────────────────────────────
+# Windows: double-click play.bat (handles venv + deps automatically)
+# Mac/Linux:
+bash play.sh
 
-# Install (editable) for development
-pip install -e ".[dev]"
+# ── For developers (editable install) ───────────────────────────────────
+python -m venv .venv && source .venv/bin/activate   # Mac/Linux
+# .venv\Scripts\activate                             # Windows
+python -m pip install -e ".[dev]"
 
 # Run TUI + server
 python -m terminus
@@ -122,6 +126,13 @@ BenchmarkResult → export (JSON/HTML/CSV/Markdown)
 | 5 | Results aggregation + MetricsEngine/DimensionScorer pipeline wiring + HTML report | **COMPLETE** (pipeline + HTML + JSON + CSV + Markdown + statistical analysis) |
 | 6 | CLI & TUI Integration | **COMPLETE** (TUI wired, real scores, `--benchmark` CLI headless + `--benchmark` → TUI setup, export buttons) |
 | 7 | Testing & Verification — full integration, headless end-to-end | **COMPLETE** (17 integration tests; 594 total passing) |
+
+### Scoring fairness (implemented 2026-06-06)
+
+Two fixes applied after live LLM testing revealed that a passive all-PASS model was scoring 2nd in composite:
+
+- **Option B — Participation score** (`composite.py`): `model_avg_score / best_score_in_run` weighted at 1.5× in composite. A model that never acts gets participation ~0.14 which drags its composite down.
+- **Option C — Monotony penalty** (`opportunity.py`): Non-linear PASS penalty (>70% PASS → near 0); dominant-action penalty if any single action >60% of turns. Catches both passivity and BUILD-fixation.
 
 ### What's left
 

@@ -73,9 +73,9 @@ class BenchmarkSetupScreen(Screen):
 
     def compose(self) -> ComposeResult:
         with ScrollableContainer(id="benchmark-setup-scroll"):
-            yield Static("╔══════════════════════════════════════════════╗", classes="bench-header")
-            yield Static("║          LLM BENCHMARK SETUP                ║", classes="bench-header")
-            yield Static("╚══════════════════════════════════════════════╝", classes="bench-header")
+            yield Static("╔═══════════════════════════════════════════════╗", classes="bench-header")
+            yield Static("║             LLM BENCHMARK SETUP               ║", classes="bench-header")
+            yield Static("╚═══════════════════════════════════════════════╝", classes="bench-header")
 
             # ─── LLM Providers Section ────────────────────────────
             yield Label("")
@@ -538,17 +538,36 @@ class BenchmarkSetupScreen(Screen):
             if model["api_key"]:
                 headers["Authorization"] = f"Bearer {model['api_key']}"
 
-            # For OpenAI-compatible: POST /chat/completions with minimal payload
+            # For OpenAI-compatible: try non-streaming first, fall back to streaming
+            # (some models like Nemotron only work with streaming=True)
             if model["provider"] in ("OpenAI", "Ollama"):
                 endpoint = f"{url}/chat/completions"
+                headers["Content-Type"] = "application/json"
+                # First try non-streaming (fast)
                 payload = {
                     "model": model["model_id"],
                     "messages": [{"role": "user", "content": "Say OK"}],
                     "max_tokens": 5,
                 }
-                async with httpx.AsyncClient(timeout=15.0) as client:
-                    resp = await client.post(endpoint, json=payload, headers=headers)
-                return resp.status_code == 200
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.post(endpoint, json=payload, headers=headers)
+                    if resp.status_code in (200, 400):
+                        return True
+                except Exception:
+                    pass
+                # Fall back to streaming (for models that require it)
+                payload["stream"] = True
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        async with client.stream("POST", endpoint, json=payload, headers=headers) as resp:
+                            if resp.status_code == 200:
+                                # Read one chunk to confirm it's working
+                                async for _ in resp.aiter_lines():
+                                    return True
+                except Exception:
+                    pass
+                return False
 
             elif model["provider"] == "Anthropic":
                 endpoint = f"{url}/v1/messages"

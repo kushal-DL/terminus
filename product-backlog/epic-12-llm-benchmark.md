@@ -232,9 +232,14 @@ Metrics: post-catastrophe recovery speed, worker reallocation after damage, repa
 
 ### Story 12.4.12 — Composite scorer
 
-**Status**: ✅ Done — `terminus/benchmark/dimensions/composite.py`
+**Status**: ✅ Done — updated 2026-06-06 with scoring fairness improvements
 
-**Implementation**: 9 weight presets (Balanced, Reliability, Strategy, Triage, Endurance, Precision, Adversarial, Coordination, Context). Custom `DimensionWeights` model supported.
+**Implementation**: `terminus/benchmark/dimensions/composite.py`
+
+- 9 weight presets (balanced, reliability, strategy, triage, endurance, precision, adversarial, coordination, context)
+- **Option B (2026-06-06):** `compute_participation_score()` — model avg score ÷ best score in run, weighted at 1.5× in composite. Prevents passive models from hiding behind high cognitive scores.
+- **Option C (2026-06-06):** Monotony penalty in `opportunity.py` — non-linear PASS penalty + dominant-action penalty when any single action > 60% of turns. Catches all-PASS and BUILD-fixation failure modes.
+- `reference_score` computed in `BenchmarkResult.from_recordings()` and passed to scorer
 
 ---
 

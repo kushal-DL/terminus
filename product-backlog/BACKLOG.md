@@ -2,8 +2,8 @@
 
 > **Product**: Terminus — Multiplayer CLI Survival Strategy Game  
 > **Stack**: Python 3.14 | Textual (TUI) | FastAPI + WebSocket | SQLite | Cloudflared  
-> **Target**: 40-60 min games, up to 250 players, `pip install .` + `python -m terminus`  
-> **Last Updated**: 2026-06-05
+> **Target**: 40-60 min games, up to 250 players, clone repo + double-click `play.bat`  
+> **Last Updated**: 2026-06-06 (scoring fairness: participation + monotony penalty)
 
 ---
 
@@ -70,7 +70,7 @@
 | ✅ | 1.3.2 | Update all Python imports across every `.py` file (`from colony.` → `from terminus.`) | ~30+ files affected |
 | ✅ | 1.3.3 | Update `pyproject.toml` — project name, console script (`terminus`), hatch build targets | `[project.scripts] terminus = "terminus.__main__:main"` |
 | ✅ | 1.3.4 | Update `test_engine.py` imports | `from terminus.server.engine import GameEngine` etc. |
-| ✅ | 1.3.5 | Update `README.md` — all Colony references → Terminus, install/run commands | `python -m terminus`, pip install instructions |
+| ✅ | 1.3.5 | Update `README.md` — all Colony references → Terminus, install/run commands | `python -m terminus`, play.bat/play.sh launcher instructions |
 | ✅ | 1.3.6 | Update display text in all screens — class names, CLI description, labels | `ColonyApp` → `TerminusApp`, "COLONY SETUP" → "SETTLEMENT SETUP" etc. |
 
 ---
@@ -508,7 +508,7 @@
 | ✅ | 7.11.7 | Integrate sounds into market screen | play_sound on buy/sell trades |
 | ✅ | 7.11.8 | Integrate sounds into colony screen | catastrophe_warning, catastrophe_hit, build_complete |
 | ✅ | 7.11.9 | Integrate sounds into lobby/worker screens | game_start on phase transition, worker_allocated on realloc |
-| ✅ | 7.11.10 | Optional simpleaudio dependency | `pip install terminus-game[audio]`; winsound fallback on Windows |
+| ✅ | 7.11.10 | Optional simpleaudio dependency | `python -m pip install simpleaudio` (Mac/Linux); winsound fallback on Windows |
 | ✅ | 7.11.11 | Audio unit tests — 30 tests | WAV format, duration, waveforms, caching, public API |
 | ⬜ | 7.11.12 | Background music — looping chiptune per game phase | Stretch: lobby/playing/catastrophe themes |
 
@@ -563,7 +563,7 @@
 
 | Status | ID | Task | Notes |
 |--------|-----|------|-------|
-| ✅ | 9.2.1 | Document `pip install git+<url>` flow | README expanded with all install methods |
+| ✅ | 9.2.1 | Document git clone + play.bat/play.sh install flow | README updated with launcher-first install |
 | ✅ | 9.2.2 | PyInstaller spec for single .exe | `terminus.spec` + `tools/build_exe.py` + frozen-path support in data loader |
 | ✅ | 9.2.3 | GitHub Release workflow (tag → build → publish) | `.github/workflows/release.yml` — test→build→exe→release pipeline |
 | ✅ | 9.2.4 | Publish to PyPI as `terminus-game` | Trusted Publisher (OIDC) via `pypa/gh-action-pypi-publish` |
@@ -704,7 +704,7 @@
 | ✅ | 12.4.9 | Tier 2 Dimension 5: Justified Pivot vs Inconsistency | `terminus/benchmark/dimensions/pivot.py` |
 | ✅ | 12.4.10 | Tier 2 Dimension 6: Graceful Degradation | `terminus/benchmark/dimensions/degradation.py` |
 | ✅ | 12.4.11 | Tier 2 Dimension 7: Opportunity Cost Awareness | `terminus/benchmark/dimensions/opportunity.py` |
-| ✅ | 12.4.12 | Composite scorer — 9 weight presets | `terminus/benchmark/dimensions/composite.py` |
+| ✅ | 12.4.12 | Composite scorer — 9 weight presets + participation floor + monotony penalty | `terminus/benchmark/dimensions/composite.py`; Option B (participation weight 1.5×) + Option C (monotony penalty) added 2026-06-06 |
 | ✅ | 12.4.13 | Trend analysis | `terminus/benchmark/dimensions/trend.py` |
 | ✅ | 12.4.14 | LLM archetype classification | `terminus/benchmark/dimensions/archetypes.py`; 8 archetypes |
 
@@ -959,7 +959,7 @@ Epic 1 ✅ Foundation & Infrastructure (16/16 done)
 
 | # | Risk | Impact | Mitigation |
 |---|------|--------|-----------|
-| 1 | Endpoint security blocks venv python.exe on dev machine | Can't `pip install .` normally | Use `uv run` with base python + PYTHONPATH workaround |
+| 1 | Endpoint security blocks venv python.exe on dev machine | Can't run python directly | Use `play.bat` which manages the venv, or use PYTHONPATH workaround |
 | 2 | cloudflared free tier under 250 WebSocket load | Lag/drops during catastrophe | Load test early; document direct IP fallback |
 | 3 | 250 WS × 2-sec broadcasts = high traffic | Server/network overwhelm | Send deltas not full state; batch broadcasts |
 | 4 | Textual rendering over SSH/remote terminals | Degraded UX | Ensure keyboard-only nav works fully |

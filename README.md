@@ -5,7 +5,6 @@ Multiplayer CLI survival strategy game — and LLM benchmark platform. Manage yo
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Tests](https://img.shields.io/badge/tests-594%20passing-brightgreen)
-[![PyPI](https://img.shields.io/pypi/v/terminus-game)](https://pypi.org/project/terminus-game/)
 
 ---
 
@@ -13,7 +12,7 @@ Multiplayer CLI survival strategy game — and LLM benchmark platform. Manage yo
 
 - [Quick Start](#quick-start)
 - [Preview](#preview)
-- [Install Options](#install-options)
+- [Install](#install)
 - [Playing the Game](#playing-the-game)
 - [Multiplayer Setup](#multiplayer-setup)
 - [LLM Benchmark Mode](#llm-benchmark-mode)
@@ -42,12 +41,6 @@ cd terminus
 bash play.sh
 ```
 
-**pip install:**
-```bash
-pip install terminus-game
-terminus
-```
-
 ---
 
 ## Preview
@@ -69,42 +62,27 @@ terminus
 
 ---
 
-## Install Options
+## Install
 
-### Option 1: Launcher scripts (easiest — no terminal knowledge needed)
+### Windows
 
-**Windows:** download the repo, double-click `play.bat`
+1. Install [Python 3.11+](https://www.python.org/downloads/) — tick **"Add Python to PATH"** during install
+2. [Download the repo](https://github.com/kushal-DL/terminus/archive/refs/heads/main.zip) and unzip — or `git clone https://github.com/kushal-DL/terminus.git`
+3. Double-click **`play.bat`**
 
-**Mac/Linux:**
-```bash
-git clone https://github.com/kushal-DL/terminus.git && cd terminus && bash play.sh
-```
+The launcher handles everything: creates a `.venv`, installs dependencies, launches the game. Subsequent runs are instant.
 
-The launcher automatically:
-- Checks Python is installed (needs 3.11+)
-- Creates a `.venv` virtual environment on first run
-- Installs all dependencies
-- Launches the game
-
-### Option 2: pip install
-
-```bash
-pip install terminus-game
-terminus
-```
-
-### Option 3: From source (for development)
+### Mac / Linux
 
 ```bash
 git clone https://github.com/kushal-DL/terminus.git
 cd terminus
-pip install -e ".[dev]"
-python -m terminus
+bash play.sh
 ```
 
 ### Prerequisites
 
-- **Python 3.11 or newer** — download from [python.org](https://www.python.org/downloads/) (Windows: tick "Add Python to PATH")
+- **Python 3.11 or newer** — [python.org](https://www.python.org/downloads/)
 - **Windows Terminal** recommended on Windows (not cmd.exe) for best Unicode rendering
 - **cloudflared** — optional, only needed for `--public` internet multiplayer
 
@@ -298,13 +276,14 @@ Each run writes to `./benchmark-results/`:
 
 ## Audio
 
-Terminus includes retro 8-bit sound effects. Press **Ctrl+S** to toggle. For full audio support:
+Terminus includes retro 8-bit sound effects. Press **Ctrl+S** to toggle. Audio is synthesized entirely in Python — no audio files are downloaded.
+
+On Windows, `winsound` is used automatically. For full audio support on Mac/Linux, install the optional audio package after cloning:
 
 ```bash
-pip install terminus-game[audio]
+# Mac/Linux only — Windows has built-in fallback
+cd terminus && python -m pip install simpleaudio
 ```
-
-On Windows, `winsound` is used as a fallback — no extra install needed. All sounds are synthesized in Python; no audio files are downloaded.
 
 ---
 
@@ -346,7 +325,9 @@ Features: real-time state inspection, override resources, trigger catastrophes, 
 ```bash
 git clone https://github.com/kushal-DL/terminus.git
 cd terminus
-pip install -e ".[dev]"
+python -m venv .venv && .venv\Scripts\activate   # Windows
+# source .venv/bin/activate                       # Mac/Linux
+python -m pip install -e ".[dev]"
 
 # Run all tests (594 passing)
 pytest
@@ -366,32 +347,18 @@ TERMINUS_BENCHMARK_MOCK=1 python -m terminus
 
 Python is not installed or not on PATH. Install from [python.org](https://www.python.org/downloads/) — tick "Add Python to PATH" during install, then try again.
 
-### `terminus` command not found after `pip install`
+### `play.bat` shows "python is not recognized"
 
-```bash
-# Works immediately without PATH setup:
-python -m terminus
-
-# Or add pip's Scripts directory to PATH (shown in pip install output)
-```
-
-### `terminus` — "Access is denied" on Windows
-
-```powershell
-# Bypass the exe entirely — works the same:
-python -m terminus
-```
+Same fix — Python is not on PATH. After installing Python, close and reopen your terminal.
 
 ### `ModuleNotFoundError: No module named 'textual'`
 
-```bash
-pip install terminus-game --force-reinstall
-```
+The virtual environment is broken. Delete the `.venv` folder and run `play.bat` again — it will recreate it.
 
 ### Port already in use
 
 ```bash
-terminus --port 9090
+python -m terminus --port 9090
 ```
 
 ### Game doesn't display correctly (garbled text)
@@ -407,7 +374,7 @@ Use **Windows Terminal** (not cmd.exe). Resize to at least 120×30 characters.
 ### LLM benchmark — model always returns PASS
 
 Common causes:
-1. **API key not set** — check with `terminus --benchmark config.json --verbose` and look for `401 Unauthorized`
+1. **API key not set** — check with `python -m terminus --benchmark config.json --verbose` and look for `401 Unauthorized`
 2. **Windows env var not propagating** — use `run_benchmark.py` (sets key in Python, not shell)
 3. **Model choosing PASS strategically** — valid behaviour; check the HTML report for reasoning factors
 
