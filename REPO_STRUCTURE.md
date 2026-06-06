@@ -6,6 +6,139 @@ This document describes every directory and significant file in the repository, 
 
 ---
 
+## Diagrams
+
+### Repository Overview
+
+```mermaid
+graph TD
+    Root["📁 terminus-game/"]
+
+    Root --> Pkg["📦 terminus/"]
+    Root --> Tests["🧪 tests/"]
+    Root --> Tools["🔧 tools/"]
+    Root --> Docs["📚 docs/"]
+    Root --> Backlog["📋 product-backlog/"]
+    Root --> Config["⚙️ pyproject.toml"]
+    Root --> Launchers["🚀 play.bat / play.sh"]
+    Root --> BenchHelper["🤖 run_benchmark.py"]
+
+    Pkg --> Server["🖥️ server/\nFastAPI + GameEngine"]
+    Pkg --> Client["🖥️ client/\nTextual TUI"]
+    Pkg --> Benchmark["📊 benchmark/\nLLM evaluation"]
+    Pkg --> Audio["🔊 audio/"]
+    Pkg --> Data["🗄️ data/\nJSON game data"]
+    Pkg --> Dev["🛠️ dev/\nAdmin console"]
+    Pkg --> Main["__main__.py\nCLI entry point"]
+
+    Client --> Screens["screens/\n17 screens"]
+    Client --> Widgets["widgets/\n7 widgets"]
+
+    Benchmark --> Adapters["adapters/\nOpenAI · Anthropic · Google"]
+    Benchmark --> Opponents["opponents/\n6 agents"]
+    Benchmark --> Metrics["metrics/\n31 Tier-1 metrics"]
+    Benchmark --> Dimensions["dimensions/\n8 Tier-2 dimensions"]
+    Benchmark --> Export["export/\nHTML·JSON·CSV·MD"]
+```
+
+---
+
+### Game Architecture
+
+```mermaid
+flowchart LR
+    Player(["👤 Player\n(human or LLM)"])
+
+    subgraph TUI["Textual TUI  terminus/client/"]
+        App["app.py\nTerminusApp"]
+        Screens["screens/\ncolony · build · market\nlobby · setup · leaderboard\nworkers · catastrophe · ..."]
+        Widgets["widgets/\nResourceBar · BuildingCard\nWorkerSlider · SparklineChart\nCountdownTimer · ..."]
+        API["api.py\nREST + WebSocket client"]
+    end
+
+    subgraph SRV["FastAPI Server  terminus/server/"]
+        AppPy["app.py\nFastAPI + WebSocket"]
+        Engine["engine.py\nGameEngine\n(all game logic)"]
+        Models["models.py\nPydantic models"]
+        Persist["persistence.py\nSQLite via aiosqlite"]
+    end
+
+    Player -->|"keyboard / mouse"| Screens
+    Screens --> Widgets
+    Screens --> API
+    API -->|"HTTP + WebSocket"| AppPy
+    AppPy --> Engine
+    Engine --> Models
+    Engine --> Persist
+    AppPy -->|"events broadcast"| API
+```
+
+---
+
+### LLM Benchmark Pipeline
+
+```mermaid
+flowchart TD
+    Config["📄 BenchmarkConfig\nmodels · opponents · games · weights"]
+
+    Config --> Runner
+
+    subgraph Runner["BenchmarkRunner  runner.py"]
+        Schedule["Game schedule\nmodel × opponent × repetition × seed"]
+    end
+
+    Runner -->|"one game at a time"| Orch
+
+    subgraph Orch["BenchmarkOrchestrator  orchestrator_v2.py"]
+        direction LR
+        LLM["LLMAdapter\nadapters/"]
+        Opp["BuiltInAgent\nopponents/"]
+        Conv["StateConverter"]
+        EH["ErrorHandler"]
+        Rec["TurnRecorder"]
+    end
+
+    Orch -->|"list[GameRecording]"| Pipeline
+
+    subgraph Pipeline["Scoring Pipeline  results.py"]
+        ME["MetricsEngine\nmetrics/\n31 Tier-1 metrics"]
+        DS["DimensionScorer\ndimensions/\n8 Tier-2 dimensions\n+ composite + archetype"]
+        ME --> DS
+    end
+
+    Pipeline --> Exports
+
+    subgraph Exports["Export  export/"]
+        HTML["report.py\nHTML + tooltips"]
+        JSON["json_export.py"]
+        CSV["csv_export.py"]
+        MD["markdown_export.py"]
+        Stats["statistics.py\nCIs + Mann-Whitney"]
+    end
+
+    subgraph Opponents["Built-in Opponents"]
+        direction LR
+        R["Random"]
+        G["Greedy"]
+        B["Balanced"]
+        Ru["Rush"]
+        T["Turtle"]
+        A["Adversarial"]
+    end
+
+    subgraph Providers["LLM Providers"]
+        direction LR
+        OAI["OpenAI\nNVIDIA · Groq\nOllama · vLLM"]
+        ANT["Anthropic\nClaude"]
+        GOO["Google\nGemini"]
+    end
+
+    LLM -.-> Providers
+    Opp -.-> Opponents
+```
+
+---
+
 ## Root
 
 | File | Purpose |
