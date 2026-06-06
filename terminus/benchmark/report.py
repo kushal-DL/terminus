@@ -9,40 +9,319 @@ from typing import Any
 
 
 # ─── Metric metadata ─────────────────────────────────────────────────────────
+# Each entry: (short_label, feeds_dimension, tooltip_text)
+# Tooltip format: plain text shown on hover — layman explanation +
+# what HIGH / LOW scores mean for agentic workflows and LLM chat.
 
-_TIER1_META: dict[str, tuple[str, str]] = {
-    # id → (short label, which dimension it feeds)
-    "1.1_build_order_efficiency":         ("Build Order",          "Coherence / Opportunity"),
-    "1.2_worker_allocation_anticipation": ("Worker Anticipation",  "Triage"),
-    "1.3_market_timing":                  ("Market Timing",        "Opportunity"),
-    "1.4_catastrophe_preparation":        ("Catastrophe Prep",     "Triage"),
-    "1.5_housing_before_growth":          ("Housing Timing",       "Triage"),
-    "1.6_resource_stockpile_timing":      ("Stockpile Timing",     "Opportunity"),
-    "2.1_invalid_action_rate":            ("Valid Action Rate",     "Arithmetic"),
-    "2.2_worker_sum_accuracy":            ("Worker Sum Accuracy",  "Arithmetic"),
-    "2.3_over_capacity_errors":           ("Capacity Errors",      "Arithmetic"),
-    "2.4_production_rate_awareness":      ("Production Awareness", "Arithmetic"),
-    "2.5_trade_math_accuracy":            ("Trade Math",           "Arithmetic"),
-    "2.6_multi_resource_feasibility":     ("Multi-Resource",       "Arithmetic"),
-    "3.1_post_catastrophe_recovery":      ("Catastrophe Recovery", "Triage / Error Recog"),
-    "3.2_worker_reallocation_after_damage": ("Damage Response",    "Pivot"),
-    "3.3_repair_prioritization":          ("Repair Priority",      "Triage / Opportunity"),
-    "3.4_market_adaptation":              ("Market Adaptation",    "Pivot"),
-    "3.5_starvation_response_speed":      ("Starvation Response",  "Triage / Error Recog"),
-    "3.6_defense_investment_after_hit":   ("Defense Learning",     "Error Recognition"),
-    "3.7_action_distribution_shift":      ("Strategy Shift",       "Pivot"),
-    "4.1_building_recall":                ("Building Recall",      "Coherence"),
-    "4.2_resource_awareness":             ("Resource Awareness",   "Coherence"),
-    "4.3_strategy_consistency":           ("Strategy Consistency", "Coherence"),
-    "4.4_history_recall":                 ("History Recall",       "Coherence"),
-    "5.1_win_rate_vs_archetypes":         ("Win Rate",             "Game Theory"),
-    "5.2_exploitation_resistance":        ("Exploit Resistance",   "Game Theory"),
-    "5.3_counter_strategy_speed":         ("Counter-Strategy",     "Game Theory"),
-    "5.4_cooperative_surplus":            ("Cooperation",          "Game Theory"),
-    "5.5_market_manipulation_detection":  ("Manip. Detection",     "Game Theory"),
-    "6.1_per_quartile_quality":           ("Quartile Quality",     "Degradation"),
-    "6.2_historical_reference_rate":      ("History Reference",    "Degradation"),
-    "6.3_context_collapse_point":         ("Collapse Point",       "Degradation"),
+_TIER1_META: dict[str, tuple[str, str, str]] = {
+    "1.1_build_order_efficiency": (
+        "Build Order", "Coherence / Opportunity",
+        "Did the model build prerequisites before advanced structures?\n"
+        "HIGH (near 1.0): Model plans ahead — builds foundations first. "
+        "In agentic workflows this means it sets up infrastructure before complex operations. "
+        "In chat it means it lays out reasoning before conclusions.\n"
+        "LOW (near 0.0): Model skips steps, tries advanced actions before basics are ready. "
+        "Expect failed tool calls and wasted turns in production agents."
+    ),
+    "1.2_worker_allocation_anticipation": (
+        "Worker Anticipation", "Triage",
+        "Did the model reallocate resources BEFORE a bottleneck appeared, not after?\n"
+        "HIGH: Model anticipates future needs — proactive resource management. "
+        "Agents with high scores here self-manage capacity before queues fill.\n"
+        "LOW: Model is purely reactive — only responds to problems already happening. "
+        "Expect downstream failures in pipelines with latency."
+    ),
+    "1.3_market_timing": (
+        "Market Timing", "Opportunity",
+        "Did the model buy resources when prices were low and sell when high?\n"
+        "HIGH: Model tracks trends and exploits price fluctuations — good temporal reasoning. "
+        "Translates to: timing API calls, batching requests efficiently, exploiting cost windows.\n"
+        "LOW: Model ignores market state, buys/sells randomly. "
+        "Expect suboptimal resource use and missed optimisation windows in cost-sensitive agents."
+    ),
+    "1.4_catastrophe_preparation": (
+        "Catastrophe Prep", "Triage",
+        "Did the model build defenses BEFORE disaster warnings expired?\n"
+        "HIGH: Model acts on early warnings — strong forward planning under uncertainty. "
+        "In agents: handles edge cases and failure modes before they hit. "
+        "In chat: anticipates follow-up questions and addresses them proactively.\n"
+        "LOW: Model ignores warnings until it's too late. "
+        "Expect fragile agents that break on first unexpected input."
+    ),
+    "1.5_housing_before_growth": (
+        "Housing Timing", "Triage",
+        "Did the model expand capacity before hitting limits?\n"
+        "HIGH: Model plans for growth — doesn't wait until it's blocked to scale. "
+        "Translates to: agents that provision resources before they're needed.\n"
+        "LOW: Model hits hard limits repeatedly. "
+        "Expect frequent blockers and retries in production workflows."
+    ),
+    "1.6_resource_stockpile_timing": (
+        "Stockpile Timing", "Opportunity",
+        "Did the model use PASS (do nothing) when it could have taken a productive action?\n"
+        "HIGH: Model rarely wastes turns — consistently takes value-adding actions. "
+        "Agents score high here when they always make progress rather than idling.\n"
+        "LOW: Model frequently passes when better options exist — passive, low-engagement play. "
+        "Expect agents that stall pipelines or give unhelpful 'I cannot help' responses."
+    ),
+    "2.1_invalid_action_rate": (
+        "Valid Action Rate", "Arithmetic",
+        "What fraction of the model's actions were accepted by the game engine?\n"
+        "HIGH (near 1.0): Model's outputs are almost always correctly formatted and feasible. "
+        "In agentic workflows: tool calls succeed, API params are correct, no retries needed.\n"
+        "LOW: Model frequently produces malformed outputs or attempts impossible actions. "
+        "Expect high retry rates, error handling overhead, and wasted API spend."
+    ),
+    "2.2_worker_sum_accuracy": (
+        "Worker Sum Accuracy", "Arithmetic",
+        "When allocating workers, did the numbers always sum to exactly the total population?\n"
+        "HIGH: Model respects hard constraints — counts add up correctly. "
+        "In agents: JSON payloads are internally consistent, budgets balance, totals are correct.\n"
+        "LOW: Model makes off-by-one or proportion errors under constraint. "
+        "Expect silent data corruption in financial, scheduling, or allocation agents."
+    ),
+    "2.3_over_capacity_errors": (
+        "Capacity Errors", "Arithmetic",
+        "Did the model attempt to store more than available capacity?\n"
+        "HIGH: Model tracks limits and stays within bounds. "
+        "Agents with high scores here respect rate limits, context windows, payload sizes.\n"
+        "LOW: Model ignores capacity constraints — tries to overfill buffers. "
+        "Expect overflow errors, truncated data, and silent failures in production."
+    ),
+    "2.4_production_rate_awareness": (
+        "Production Awareness", "Arithmetic",
+        "Did the model understand how fast resources accumulate and plan accordingly?\n"
+        "HIGH: Model reasons about rates, not just snapshots — knows when it can afford something.\n"
+        "LOW: Model treats the current state as static — attempts actions before sufficient "
+        "resources accumulate. Translates to timing errors in rate-limited or async pipelines."
+    ),
+    "2.5_trade_math_accuracy": (
+        "Trade Math", "Arithmetic",
+        "Did the model correctly calculate expected gains/costs from market trades?\n"
+        "HIGH: Model computes expected value accurately — good at cost-benefit reasoning. "
+        "Agents score high here when they correctly estimate API costs, token budgets, trade-offs.\n"
+        "LOW: Model miscalculates value, makes losing trades. "
+        "Expect poor cost management and suboptimal decisions in resource-constrained agents."
+    ),
+    "2.6_multi_resource_feasibility": (
+        "Multi-Resource", "Arithmetic",
+        "Did the model correctly check ALL requirements simultaneously before acting?\n"
+        "HIGH: Model handles multi-constraint satisfaction — checks food AND materials AND gold together.\n"
+        "LOW: Model checks one constraint at a time, misses combined requirements. "
+        "Translates to: agents that partially complete multi-step operations then fail mid-way."
+    ),
+    "3.1_post_catastrophe_recovery": (
+        "Catastrophe Recovery", "Triage / Error Recog",
+        "How quickly did production return to normal after a disaster?\n"
+        "HIGH: Model recovers fast — resilient to disruption, good error recovery. "
+        "In agents: bounces back from API failures, tool errors, or bad data quickly.\n"
+        "LOW: Model stays damaged long after an event — poor recovery instincts. "
+        "Expect long degraded states after any unexpected failure in production."
+    ),
+    "3.2_worker_reallocation_after_damage": (
+        "Damage Response", "Pivot",
+        "Did the model shift resources within 3 turns of a crisis?\n"
+        "HIGH: Model responds quickly to change — adaptive and responsive. "
+        "In chat: pivots gracefully when initial approach fails.\n"
+        "LOW: Model sticks to the old plan even when circumstances changed. "
+        "Expect rigid agents that don't adapt to feedback or errors."
+    ),
+    "3.3_repair_prioritization": (
+        "Repair Priority", "Triage / Opportunity",
+        "When multiple things were broken, did the model fix the most important one first?\n"
+        "HIGH: Model correctly prioritises — fixes critical systems before cosmetic ones. "
+        "In incident response agents: addresses P0 before P2.\n"
+        "LOW: Model repairs randomly or in wrong order. "
+        "Expect agents that patch minor issues while critical failures persist."
+    ),
+    "3.4_market_adaptation": (
+        "Market Adaptation", "Pivot",
+        "Did the model exploit price shocks (>30% change) when they occurred?\n"
+        "HIGH: Model detects environmental changes and adapts strategy. "
+        "Agents score high here when they notice and exploit changing conditions.\n"
+        "LOW: Model ignores market signals — misses opportunities. "
+        "Translates to rigid agents that don't adjust to new information in context."
+    ),
+    "3.5_starvation_response_speed": (
+        "Starvation Response", "Triage / Error Recog",
+        "How many turns did the model take to recover from food running out?\n"
+        "HIGH (fast recovery): Model detects critical failures immediately and acts. "
+        "In agents: catches and resolves blocking errors with minimal delay.\n"
+        "LOW (slow recovery): Model lets critical problems persist. "
+        "Expect cascading failures in agents where one blocked step halts the whole pipeline."
+    ),
+    "3.6_defense_investment_after_hit": (
+        "Defense Learning", "Error Recognition",
+        "After being hit by the first catastrophe, did the model build defenses within 30 turns?\n"
+        "HIGH: Model learns from failure — invests in prevention after an incident. "
+        "In agents: adds error handling, validation, or fallbacks after encountering a failure mode.\n"
+        "LOW: Model repeats the same vulnerability. "
+        "Expect agents that make the same mistakes repeatedly without self-correction."
+    ),
+    "3.7_action_distribution_shift": (
+        "Strategy Shift", "Pivot",
+        "Did the model's action mix change significantly after a disruption (catastrophe, crisis)?\n"
+        "HIGH: Model shifted strategy in response to new circumstances — adaptive reasoning.\n"
+        "LOW: Model used the same strategy regardless of what happened — rigid.\n"
+        "Note: extreme shift (always changing) also scores low — justified pivots only. "
+        "Best for agents that update their approach when the environment changes but stay consistent otherwise."
+    ),
+    "4.1_building_recall": (
+        "Building Recall", "Coherence",
+        "When asked, could the model accurately list what it had built from memory?\n"
+        "HIGH: Model has accurate working memory of its own state. "
+        "In agents: correctly remembers what tools it called, what state it modified.\n"
+        "LOW: Model confabulates — invents buildings it doesn't have. "
+        "Expect hallucinated tool results and false state assumptions in long agent runs.\n"
+        "⚠️ Requires state probes enabled (enable_state_probes: true in config)."
+    ),
+    "4.2_resource_awareness": (
+        "Resource Awareness", "Coherence",
+        "Did the model's estimate of its own resources match reality?\n"
+        "HIGH: Model has accurate self-knowledge — knows what it has. "
+        "In LLM chat: accurate about its own capabilities and context window state.\n"
+        "LOW: Model doesn't know its own state — attempts actions it can't complete. "
+        "Expect overconfident agents that claim to have done things they haven't.\n"
+        "⚠️ Requires state probes enabled."
+    ),
+    "4.3_strategy_consistency": (
+        "Strategy Consistency", "Coherence",
+        "Did the model's stated strategy match what it was actually doing?\n"
+        "HIGH: Model's stated reasoning aligns with its actions — trustworthy chain-of-thought.\n"
+        "LOW: Model says one thing, does another. "
+        "Expect unreliable reasoning traces — the model's explanations can't be trusted for debugging.\n"
+        "⚠️ Requires state probes enabled."
+    ),
+    "4.4_history_recall": (
+        "History Recall", "Coherence",
+        "Could the model recall key events (catastrophes, trades) that happened earlier?\n"
+        "HIGH: Model maintains accurate event history — good episodic memory. "
+        "In long agent runs: correctly references earlier steps, doesn't repeat completed work.\n"
+        "LOW: Model forgets or misremembers events. "
+        "Expect agents that redo completed steps or contradict earlier decisions.\n"
+        "⚠️ Requires state probes enabled."
+    ),
+    "5.1_win_rate_vs_archetypes": (
+        "Win Rate", "Game Theory",
+        "How often did the model outscore opponents weighted by opponent difficulty?\n"
+        "HIGH: Model can beat scripted opponents — including hard ones (adversarial, turtle). "
+        "In multi-agent systems: holds its own against other agents.\n"
+        "LOW: Model loses even to random opponents. "
+        "Expect poor performance in any competitive or adversarial multi-agent deployment."
+    ),
+    "5.2_exploitation_resistance": (
+        "Exploit Resistance", "Game Theory",
+        "Did the model perform as well against an adversarial opponent as against a balanced one?\n"
+        "HIGH (ratio near 1.0): Model is robust — adversarial tactics don't significantly hurt it.\n"
+        "LOW: Model is vulnerable to manipulation — performs much worse when actively targeted. "
+        "Do not deploy in adversarial environments (competitive auctions, negotiation agents) without mitigation."
+    ),
+    "5.3_counter_strategy_speed": (
+        "Counter-Strategy", "Game Theory",
+        "How quickly did the model start outpacing opponents after the game started?\n"
+        "HIGH: Model adapts to the opponent's style quickly — good opponent modeling.\n"
+        "LOW: Model takes many turns to find an effective counter. "
+        "Expect slow convergence in multi-agent negotiations or iterative strategy games."
+    ),
+    "5.4_cooperative_surplus": (
+        "Cooperation", "Game Theory",
+        "Did the model accept mutually beneficial trades with opponents?\n"
+        "HIGH: Model identifies and captures win-win opportunities — cooperative rationality.\n"
+        "LOW: Model refuses beneficial cooperation — either too suspicious or doesn't analyse trade value. "
+        "Translates to: poor performance in collaborative multi-agent tasks requiring negotiation."
+    ),
+    "5.5_market_manipulation_detection": (
+        "Manip. Detection", "Game Theory",
+        "Did the model avoid buying during opponent pump-and-dump patterns?\n"
+        "HIGH: Model detects and avoids adversarial market manipulation.\n"
+        "LOW: Model is fooled by price manipulation — buys at inflated prices. "
+        "In agents: vulnerable to prompt injection or adversarial inputs that exploit predictable behaviour."
+    ),
+    "6.1_per_quartile_quality": (
+        "Quartile Quality", "Degradation",
+        "Was the model's decision quality in the final 25% of turns as good as the first 25%?\n"
+        "HIGH (ratio near 1.0): Model doesn't degrade over time — consistent long-horizon performance.\n"
+        "LOW: Late-game decisions are worse than early ones — context accumulation hurts the model. "
+        "Directly predicts: how far into a long agentic task the model stays reliable."
+    ),
+    "6.2_historical_reference_rate": (
+        "History Reference", "Degradation",
+        "Did late-game actions build on decisions made early in the game?\n"
+        "HIGH: Model uses its full history — upgrades buildings it built earlier, continues strategies.\n"
+        "LOW: Model forgets early decisions — each turn treated in isolation. "
+        "Expect agents that re-derive information they already established, wasting context and tokens."
+    ),
+    "6.3_context_collapse_point": (
+        "Collapse Point", "Degradation",
+        "At what turn did valid action rate drop more than 20% below the rolling average?\n"
+        "HIGH (late collapse or none): Model stays coherent for many turns — large effective context window.\n"
+        "LOW (early collapse): Model starts producing invalid outputs early. "
+        "This directly maps to an agent's reliable step budget — the number of steps before quality degrades. "
+        "Multiply by average turn time to get real-world operational horizon."
+    ),
+}
+
+# ─── Dimension tooltips ───────────────────────────────────────────────────────
+# (short_label, full_name, tooltip_text)
+
+_DIM_TOOLTIPS: dict[str, tuple[str, str, str]] = {
+    "dim_1_coherence": (
+        "Coherence", "Multi-Decision Coherence",
+        "Does the model stay consistent across 100+ sequential decisions?\n"
+        "Measures: strategy coherence, accurate self-knowledge, memory fidelity.\n"
+        "HIGH → long agent step budgets, trustworthy chain-of-thought, accurate self-reporting.\n"
+        "LOW → self-contradiction after a few steps, hallucinated state, incoherent long tasks."
+    ),
+    "dim_2_arithmetic": (
+        "Arithmetic", "Applied Arithmetic Under Load",
+        "Can the model do correct math while simultaneously reasoning about strategy?\n"
+        "Measures: valid actions, constraint satisfaction, multi-variable calculations under cognitive load.\n"
+        "HIGH → reliable tool-call parameters, correct JSON payloads, budgets that balance.\n"
+        "LOW → malformed API calls, off-by-one errors, silent data corruption in numeric workflows."
+    ),
+    "dim_3_triage": (
+        "Triage", "Priority Triage Under Competing Constraints",
+        "When multiple urgent problems exist simultaneously, does the model fix the right one first?\n"
+        "Measures: correct priority ordering, speed of critical response, proactive preparation.\n"
+        "HIGH → P0 handled before P2, incident response that addresses root cause first.\n"
+        "LOW → cosmetic fixes while critical systems burn, poor on-call automation."
+    ),
+    "dim_4_error_recognition": (
+        "Err. Recog.", "Compounding Error Recognition",
+        "Does the model detect a small mistake snowballing into a crisis BEFORE it becomes critical?\n"
+        "Measures: detection lead time, recovery speed, avoidance of cascading failures.\n"
+        "HIGH → self-healing agents that catch drift early, short recovery times.\n"
+        "LOW → problems compound undetected until catastrophic failure."
+    ),
+    "dim_5_pivot": (
+        "Pivot", "Justified Pivot vs Inconsistency",
+        "Can the model tell the difference between a justified strategy change and random incoherence?\n"
+        "Measures: signal-to-noise ratio of strategy changes vs environmental triggers.\n"
+        "HIGH → stable implementations that update for good reasons only.\n"
+        "LOW → either rigid (never adapts) or chaotic (changes strategy randomly)."
+    ),
+    "dim_6_degradation": (
+        "Degradation", "Graceful Degradation",
+        "How does performance curve over many turns — stable, gradual decline, or cliff failure?\n"
+        "Measures: quality in early vs late turns, context collapse point, history utilisation.\n"
+        "HIGH → predictable SLA, model stays reliable deep into long tasks.\n"
+        "LOW → cliff failure at a specific context length, or rapid degradation over time."
+    ),
+    "dim_7_opportunity": (
+        "Opportunity", "Opportunity Cost Awareness",
+        "Does the model choose the BEST available action, or just any valid one?\n"
+        "Measures: action diversity, avoidance of passive play, strategic optimality.\n"
+        "HIGH → solution quality ceiling is high, model exploits available options fully.\n"
+        "LOW → model defaults to safe/passive actions (PASS), misses value-adding opportunities.\n"
+        "Note: includes participation penalty — models that only PASS score near 0 here."
+    ),
+    "dim_8_game_theory": (
+        "Game Theory", "Game-Theoretic Sophistication",
+        "Does the model reason about other agents, or play as if it's alone?\n"
+        "Measures: win rate vs opponents, exploitation resistance, cooperative trade capture.\n"
+        "HIGH → strong in multi-agent systems, auctions, negotiations, adversarial environments.\n"
+        "LOW → easily manipulated, misses cooperative opportunities, poor against adaptive opponents."
+    ),
 }
 
 _TIER1_GROUPS = {
@@ -182,23 +461,43 @@ def _build_dimension_table(dimensions: dict[str, Any], rankings: list[dict[str, 
     for dim_id in dim_ids:
         short = _DIM_DISPLAY[dim_id]
         full  = _DIM_FULL[dim_id]
+        tooltip_info = _DIM_TOOLTIPS.get(dim_id)
+        if tooltip_info:
+            tt_text = html.escape(tooltip_info[2].replace("\n", "&#10;"))
+            label_html = (
+                f'<span class="has-tooltip" data-tooltip="{tt_text}">'
+                f'{short} <span class="tooltip-icon">?</span>'
+                f'</span>'
+            )
+        else:
+            label_html = short
+
         cells = ""
         for model_name in model_names:
             dim_scores = dimensions.get(model_name, {})
-            # dimensions keyed by display name
             val = dim_scores.get(full, None)
             if val is None:
-                # also try short
                 val = dim_scores.get(short, None)
             cells += f"<td>{_score_pill(val) if val is not None else '<span class=muted>—</span>'}</td>"
-        rows.append(f"<tr><td class='dim-label' title='{html.escape(full)}'>{short}</td>{cells}</tr>")
+        rows.append(f"<tr><td class='dim-label'>{label_html}</td>{cells}</tr>")
 
     # Composite row
+    comp_tooltip = html.escape(
+        "Weighted average of all 8 dimensions + participation score (1.5× weight).&#10;"
+        "Participation = model avg score ÷ best score in run.&#10;"
+        "HIGH → model engages with the task AND reasons well about it.&#10;"
+        "LOW → either passive play or poor cognitive performance."
+    )
+    comp_label = (
+        f'<span class="has-tooltip" data-tooltip="{comp_tooltip}">'
+        f'<strong>Composite</strong> <span class="tooltip-icon">?</span>'
+        f'</span>'
+    )
     comp_cells = ""
     for r in rankings:
         comp = r.get("composite_score")
         comp_cells += f"<td>{_score_pill(comp) if comp is not None else '<span class=muted>—</span>'}</td>"
-    rows.append(f"<tr class='composite-row'><td class='dim-label'><strong>Composite</strong></td>{comp_cells}</tr>")
+    rows.append(f"<tr class='composite-row'><td class='dim-label'>{comp_label}</td>{comp_cells}</tr>")
 
     return (
         f"<div class='table-wrap'>"
@@ -240,11 +539,25 @@ def _build_tier1_section(models_detail: dict[str, Any], rankings: list[dict[str,
             for metric_id, result in sorted(group_metrics.items()):
                 val     = result.get("value", 0) if isinstance(result, dict) else float(result)
                 samples = result.get("sample_count", 0) if isinstance(result, dict) else 0
-                label, feeds = _TIER1_META.get(metric_id, (metric_id, ""))
+                meta    = _TIER1_META.get(metric_id, (metric_id, "", ""))
+                label   = meta[0]
+                feeds   = meta[1]
+                tooltip = meta[2] if len(meta) > 2 else ""
                 sample_str = f"<span class='sample-count'>n={samples}</span>" if samples else ""
+
+                if tooltip:
+                    tt_text = html.escape(tooltip.replace("\n", "&#10;"))
+                    label_html = (
+                        f'<span class="has-tooltip" data-tooltip="{tt_text}">'
+                        f'{html.escape(label)} <span class="tooltip-icon">?</span>'
+                        f'</span>'
+                    )
+                else:
+                    label_html = html.escape(label)
+
                 rows_html += (
                     f"<tr>"
-                    f"<td class='metric-label'>{html.escape(label)}</td>"
+                    f"<td class='metric-label'>{label_html}</td>"
                     f"<td>{_score_pill(val)}</td>"
                     f"<td class='metric-feeds muted'>{html.escape(feeds)}</td>"
                     f"<td>{sample_str}</td>"
@@ -620,6 +933,87 @@ tr.bronze td:first-child {{ color: #b05e28; font-weight: 700; }}
   border-top: 1px solid #e2e8f0;
   color: #94a3b8;
   font-size: 0.8rem;
+}}
+
+/* ── Tooltips ─────────────────────────────────── */
+.has-tooltip {{
+  position: relative;
+  cursor: help;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}}
+.tooltip-icon {{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #cbd5e1;
+  color: #475569;
+  font-size: 0.6rem;
+  font-weight: 700;
+  font-style: normal;
+  flex-shrink: 0;
+  vertical-align: middle;
+}}
+.has-tooltip:hover .tooltip-icon {{
+  background: #2563eb;
+  color: #fff;
+}}
+.has-tooltip::after {{
+  content: attr(data-tooltip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  min-width: 280px;
+  max-width: 380px;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  font-weight: 400;
+  line-height: 1.5;
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  white-space: pre-line;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.25);
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}}
+.has-tooltip::before {{
+  content: '';
+  position: absolute;
+  bottom: calc(100% + 2px);
+  left: 12px;
+  border: 6px solid transparent;
+  border-top-color: #1e293b;
+  z-index: 101;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s, visibility 0.15s;
+}}
+.has-tooltip:hover::after,
+.has-tooltip:hover::before {{
+  opacity: 1;
+  visibility: visible;
+}}
+/* Flip tooltip when near bottom of viewport */
+.dim-table tbody tr:last-child .has-tooltip::after,
+.dim-table tbody tr:nth-last-child(-n+3) .has-tooltip::after {{
+  bottom: auto;
+  top: calc(100% + 8px);
+}}
+.dim-table tbody tr:last-child .has-tooltip::before,
+.dim-table tbody tr:nth-last-child(-n+3) .has-tooltip::before {{
+  bottom: auto;
+  top: calc(100% + 2px);
+  border-top-color: transparent;
+  border-bottom-color: #1e293b;
 }}
 </style>
 </head>
