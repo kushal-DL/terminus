@@ -265,10 +265,21 @@ def _build_summary(
             "invalid_actions": rec.invalid_action_count,
         })
 
+    # models_detail — per-model Tier-1 metrics for report drill-down
+    models_detail: dict[str, Any] = {}
+    for name, mr in model_results.items():
+        models_detail[name] = {
+            "metrics": {
+                mid: {"value": m.value, "sample_count": m.sample_count}
+                for mid, m in mr.metrics.items()
+            },
+        }
+
     return {
         "rankings": rankings,
         "model_stats": model_stats,
         "dimensions": dimensions,
+        "models_detail": models_detail,
         "game_results": game_results,
         "total_games": len(recordings),
         "elapsed_seconds": elapsed_seconds,

@@ -8,212 +8,359 @@ from pathlib import Path
 from typing import Any
 
 
-def generate_report(results: dict[str, Any], config: dict[str, Any], output_path: str) -> str:
-    """Generate an HTML benchmark report and write it to output_path.
+# ─── Metric metadata ─────────────────────────────────────────────────────────
 
-    Returns the absolute path to the written file.
-    """
+_TIER1_META: dict[str, tuple[str, str]] = {
+    # id → (short label, which dimension it feeds)
+    "1.1_build_order_efficiency":         ("Build Order",          "Coherence / Opportunity"),
+    "1.2_worker_allocation_anticipation": ("Worker Anticipation",  "Triage"),
+    "1.3_market_timing":                  ("Market Timing",        "Opportunity"),
+    "1.4_catastrophe_preparation":        ("Catastrophe Prep",     "Triage"),
+    "1.5_housing_before_growth":          ("Housing Timing",       "Triage"),
+    "1.6_resource_stockpile_timing":      ("Stockpile Timing",     "Opportunity"),
+    "2.1_invalid_action_rate":            ("Valid Action Rate",     "Arithmetic"),
+    "2.2_worker_sum_accuracy":            ("Worker Sum Accuracy",  "Arithmetic"),
+    "2.3_over_capacity_errors":           ("Capacity Errors",      "Arithmetic"),
+    "2.4_production_rate_awareness":      ("Production Awareness", "Arithmetic"),
+    "2.5_trade_math_accuracy":            ("Trade Math",           "Arithmetic"),
+    "2.6_multi_resource_feasibility":     ("Multi-Resource",       "Arithmetic"),
+    "3.1_post_catastrophe_recovery":      ("Catastrophe Recovery", "Triage / Error Recog"),
+    "3.2_worker_reallocation_after_damage": ("Damage Response",    "Pivot"),
+    "3.3_repair_prioritization":          ("Repair Priority",      "Triage / Opportunity"),
+    "3.4_market_adaptation":              ("Market Adaptation",    "Pivot"),
+    "3.5_starvation_response_speed":      ("Starvation Response",  "Triage / Error Recog"),
+    "3.6_defense_investment_after_hit":   ("Defense Learning",     "Error Recognition"),
+    "3.7_action_distribution_shift":      ("Strategy Shift",       "Pivot"),
+    "4.1_building_recall":                ("Building Recall",      "Coherence"),
+    "4.2_resource_awareness":             ("Resource Awareness",   "Coherence"),
+    "4.3_strategy_consistency":           ("Strategy Consistency", "Coherence"),
+    "4.4_history_recall":                 ("History Recall",       "Coherence"),
+    "5.1_win_rate_vs_archetypes":         ("Win Rate",             "Game Theory"),
+    "5.2_exploitation_resistance":        ("Exploit Resistance",   "Game Theory"),
+    "5.3_counter_strategy_speed":         ("Counter-Strategy",     "Game Theory"),
+    "5.4_cooperative_surplus":            ("Cooperation",          "Game Theory"),
+    "5.5_market_manipulation_detection":  ("Manip. Detection",     "Game Theory"),
+    "6.1_per_quartile_quality":           ("Quartile Quality",     "Degradation"),
+    "6.2_historical_reference_rate":      ("History Reference",    "Degradation"),
+    "6.3_context_collapse_point":         ("Collapse Point",       "Degradation"),
+}
+
+_TIER1_GROUPS = {
+    "Planning": ["1.1","1.2","1.3","1.4","1.5","1.6"],
+    "Arithmetic": ["2.1","2.2","2.3","2.4","2.5","2.6"],
+    "Flexibility": ["3.1","3.2","3.3","3.4","3.5","3.6","3.7"],
+    "State Probes": ["4.1","4.2","4.3","4.4"],
+    "Opponent-Aware": ["5.1","5.2","5.3","5.4","5.5"],
+    "Context Pressure": ["6.1","6.2","6.3"],
+}
+
+_DIM_DISPLAY = {
+    "dim_1_coherence":        "Coherence",
+    "dim_2_arithmetic":       "Arithmetic",
+    "dim_3_triage":           "Triage",
+    "dim_4_error_recognition":"Err. Recog.",
+    "dim_5_pivot":            "Pivot",
+    "dim_6_degradation":      "Degradation",
+    "dim_7_opportunity":      "Opportunity",
+    "dim_8_game_theory":      "Game Theory",
+}
+
+_DIM_FULL = {
+    "dim_1_coherence":        "Multi-Decision Coherence",
+    "dim_2_arithmetic":       "Applied Arithmetic Under Load",
+    "dim_3_triage":           "Priority Triage",
+    "dim_4_error_recognition":"Compounding Error Recognition",
+    "dim_5_pivot":            "Justified Pivot",
+    "dim_6_degradation":      "Graceful Degradation",
+    "dim_7_opportunity":      "Opportunity Cost Awareness",
+    "dim_8_game_theory":      "Game-Theoretic Sophistication",
+}
+
+
+# ─── Public API ───────────────────────────────────────────────────────────────
+
+def generate_report(results: dict[str, Any], config: dict[str, Any], output_path: str) -> str:
+    """Generate an HTML benchmark report and write it to output_path."""
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
-    rankings = results.get("rankings", [])
+    rankings   = results.get("rankings", [])
     model_stats = results.get("model_stats", {})
     total_games = results.get("total_games", 0)
-    elapsed = results.get("elapsed_seconds", 0)
+    elapsed    = results.get("elapsed_seconds", 0)
     dimensions = results.get("dimensions", {})
+    # Per-model metrics from the full BenchmarkResult (if available)
+    models_detail = results.get("models_detail", {})
 
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    elapsed_str = f"{elapsed / 60:.1f} min" if elapsed < 3600 else f"{elapsed / 3600:.1f} hours"
+    timestamp  = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    elapsed_str = f"{elapsed / 60:.1f} min" if elapsed < 3600 else f"{elapsed / 3600:.1f} hr"
 
-    # Build HTML
-    rankings_rows = _build_rankings_rows(rankings)
-    dimension_table = _build_dimension_table(dimensions, rankings)
-    config_summary = _build_config_summary(config)
-    per_model_details = _build_per_model_details(model_stats)
+    rankings_rows    = _build_rankings_rows(rankings)
+    dimension_table  = _build_dimension_table(dimensions, rankings)
+    tier1_section    = _build_tier1_section(models_detail, rankings)
+    config_html      = _build_config_summary(config)
+    per_model_html   = _build_per_model_details(model_stats, dimensions, rankings)
 
     content = _TEMPLATE.format(
-        timestamp=timestamp,
-        total_games=total_games,
-        num_models=len(rankings),
-        elapsed=elapsed_str,
-        speed=config.get("speed_multiplier", 1),
-        max_turns=config.get("max_turns", 100),
-        num_catastrophes=config.get("num_catastrophes", 5),
-        rankings_rows=rankings_rows,
-        dimension_table=dimension_table,
-        config_summary=config_summary,
-        per_model_details=per_model_details,
+        timestamp       = timestamp,
+        total_games     = total_games,
+        num_models      = len(rankings),
+        elapsed         = elapsed_str,
+        speed           = config.get("speed_multiplier", 1),
+        max_turns       = config.get("max_turns", 100),
+        num_catastrophes= config.get("num_catastrophes", 5),
+        rankings_rows   = rankings_rows,
+        dimension_table = dimension_table,
+        tier1_section   = tier1_section,
+        per_model_html  = per_model_html,
+        config_html     = config_html,
     )
 
     path.write_text(content, encoding="utf-8")
     return str(path.resolve())
 
 
+# ─── Section builders ─────────────────────────────────────────────────────────
+
 def _build_rankings_rows(rankings: list[dict[str, Any]]) -> str:
     rows = []
     for r in rankings:
-        name = html.escape(str(r.get("name", "?")))
-        score = r.get("score", 0)
+        name       = html.escape(str(r.get("name", "?")))
+        composite  = r.get("composite_score")
+        score      = r.get("score", r.get("avg_score", 0))
         valid_rate = r.get("valid_rate", 0)
-        games = r.get("games_played", 0)
-        consistency = r.get("consistency", 0)
-        trend = html.escape(str(r.get("trend", "—")))
-        rank = r.get("rank", "?")
-
-        # Color code by rank
-        if rank == 1:
-            cls = "gold"
-        elif rank == 2:
-            cls = "silver"
-        elif rank == 3:
-            cls = "bronze"
-        else:
-            cls = ""
+        games      = r.get("games_played", 0)
+        consistency= r.get("consistency", 0)
+        trend      = html.escape(str(r.get("trend", "—")).title())
+        archetype  = html.escape(str(r.get("archetype", "—")).title())
+        rank       = r.get("rank", "?")
+        rank_cls   = {1: "gold", 2: "silver", 3: "bronze"}.get(rank, "")
+        comp_str   = f"{composite:.3f}" if composite is not None else "—"
 
         rows.append(
-            f'<tr class="{cls}">'
+            f'<tr class="{rank_cls}">'
             f"<td>{rank}</td>"
             f"<td><strong>{name}</strong></td>"
-            f"<td>{score:.1f}</td>"
-            f"<td>{valid_rate * 100:.0f}%</td>"
-            f"<td>{games}</td>"
-            f"<td>±{consistency:.1f}</td>"
+            f"<td class='num'>{comp_str}</td>"
+            f"<td class='num'>{score:.0f}</td>"
+            f"<td class='num'>{valid_rate * 100:.0f}%</td>"
+            f"<td class='num'>{games}</td>"
+            f"<td>{archetype}</td>"
             f"<td>{trend}</td>"
             f"</tr>"
         )
     return "\n".join(rows)
 
 
+def _score_pill(score: float) -> str:
+    """Render a score as a compact pill with colour coding."""
+    score = max(0.0, min(1.0, score))
+    pct   = int(score * 100)
+    if score >= 0.75:
+        cls = "pill-high"
+    elif score >= 0.50:
+        cls = "pill-mid"
+    elif score >= 0.25:
+        cls = "pill-low"
+    else:
+        cls = "pill-zero"
+    return f'<span class="pill {cls}">{score:.2f}</span>'
+
+
 def _build_dimension_table(dimensions: dict[str, Any], rankings: list[dict[str, Any]]) -> str:
-    """Build the 8-dimension breakdown table."""
-    dim_names = [
-        "Multi-Decision Coherence",
-        "Applied Arithmetic Under Load",
-        "Priority Triage",
-        "Compounding Error Recognition",
-        "Justified Pivot",
-        "Graceful Degradation",
-        "Opportunity Cost Awareness",
-        "Game-Theoretic Sophistication",
-    ]
+    dim_ids = list(_DIM_DISPLAY.keys())
+    model_names = [r.get("name", "?") for r in rankings]
 
-    if not dimensions:
-        # Generate placeholder based on valid_rate proxy
-        rows = []
-        for r in rankings:
-            name = html.escape(str(r.get("name", "?")))
-            valid_rate = r.get("valid_rate", 0.5)
-            # Approximate dimension scores from valid_rate as a rough proxy
-            cells = "".join(
-                f"<td>{_score_bar(valid_rate * (0.7 + i * 0.04))}</td>"
-                for i in range(8)
+    if not model_names:
+        return "<p class='muted'>No models to display.</p>"
+
+    # Header row
+    th_models = "".join(f"<th>{html.escape(n)}</th>" for n in model_names)
+    header = f"<tr><th>Dimension</th>{th_models}</tr>"
+
+    rows = []
+    for dim_id in dim_ids:
+        short = _DIM_DISPLAY[dim_id]
+        full  = _DIM_FULL[dim_id]
+        cells = ""
+        for model_name in model_names:
+            dim_scores = dimensions.get(model_name, {})
+            # dimensions keyed by display name
+            val = dim_scores.get(full, None)
+            if val is None:
+                # also try short
+                val = dim_scores.get(short, None)
+            cells += f"<td>{_score_pill(val) if val is not None else '<span class=muted>—</span>'}</td>"
+        rows.append(f"<tr><td class='dim-label' title='{html.escape(full)}'>{short}</td>{cells}</tr>")
+
+    # Composite row
+    comp_cells = ""
+    for r in rankings:
+        comp = r.get("composite_score")
+        comp_cells += f"<td>{_score_pill(comp) if comp is not None else '<span class=muted>—</span>'}</td>"
+    rows.append(f"<tr class='composite-row'><td class='dim-label'><strong>Composite</strong></td>{comp_cells}</tr>")
+
+    return (
+        f"<div class='table-wrap'>"
+        f"<table class='dim-table'>"
+        f"<thead>{header}</thead>"
+        f"<tbody>{''.join(rows)}</tbody>"
+        f"</table></div>"
+    )
+
+
+def _build_tier1_section(models_detail: dict[str, Any], rankings: list[dict[str, Any]]) -> str:
+    """Build the Tier-1 metric drill-down, one accordion panel per model."""
+    if not models_detail and not rankings:
+        return ""
+
+    # Try to get model names from rankings order
+    model_names = [r.get("name", "?") for r in rankings]
+
+    panels = []
+    for model_name in model_names:
+        detail   = models_detail.get(model_name, {})
+        metrics  = detail.get("metrics", {})
+        if not metrics:
+            continue
+
+        escaped = html.escape(str(model_name))
+        group_html = ""
+
+        for group_name, prefixes in _TIER1_GROUPS.items():
+            # Find all metrics in this group
+            group_metrics = {
+                k: v for k, v in metrics.items()
+                if any(k.startswith(p + "_") or k.startswith(p) for p in prefixes)
+            }
+            if not group_metrics:
+                continue
+
+            rows_html = ""
+            for metric_id, result in sorted(group_metrics.items()):
+                val     = result.get("value", 0) if isinstance(result, dict) else float(result)
+                samples = result.get("sample_count", 0) if isinstance(result, dict) else 0
+                label, feeds = _TIER1_META.get(metric_id, (metric_id, ""))
+                sample_str = f"<span class='sample-count'>n={samples}</span>" if samples else ""
+                rows_html += (
+                    f"<tr>"
+                    f"<td class='metric-label'>{html.escape(label)}</td>"
+                    f"<td>{_score_pill(val)}</td>"
+                    f"<td class='metric-feeds muted'>{html.escape(feeds)}</td>"
+                    f"<td>{sample_str}</td>"
+                    f"</tr>"
+                )
+
+            group_html += (
+                f"<div class='metric-group'>"
+                f"<div class='metric-group-title'>{html.escape(group_name)}</div>"
+                f"<table class='metric-table'>"
+                f"<thead><tr>"
+                f"<th>Metric</th><th>Score</th><th>Feeds dimension</th><th>Samples</th>"
+                f"</tr></thead>"
+                f"<tbody>{rows_html}</tbody>"
+                f"</table></div>"
             )
-            rows.append(f"<tr><td><strong>{name}</strong></td>{cells}</tr>")
 
-        header_cells = "".join(f"<th>{d[:20]}</th>" for d in dim_names)
-        return (
-            f"<table><thead><tr><th>Model</th>{header_cells}</tr></thead>"
-            f"<tbody>{''.join(rows)}</tbody></table>"
-            f'<p class="note">Note: Dimension scores are approximations. '
-            f"Full scoring requires game replay analysis.</p>"
+        if not group_html:
+            continue
+
+        panels.append(
+            f"<details class='accordion'>"
+            f"<summary><strong>{escaped}</strong> — Tier-1 metric breakdown</summary>"
+            f"<div class='accordion-body'>{group_html}</div>"
+            f"</details>"
         )
 
-    # Real dimension data
-    rows = []
-    for model_name, dim_scores in dimensions.items():
-        name = html.escape(str(model_name))
-        cells = "".join(f"<td>{_score_bar(dim_scores.get(d, 0))}</td>" for d in dim_names)
-        rows.append(f"<tr><td><strong>{name}</strong></td>{cells}</tr>")
+    if not panels:
+        return "<p class='muted'>Tier-1 metric detail not available. Check the JSON export for full data.</p>"
 
-    header_cells = "".join(f"<th>{d[:20]}</th>" for d in dim_names)
-    return (
-        f"<table><thead><tr><th>Model</th>{header_cells}</tr></thead>"
-        f"<tbody>{''.join(rows)}</tbody></table>"
-    )
+    return "\n".join(panels)
 
 
-def _score_bar(score: float) -> str:
-    """Render a score as a colored bar + number."""
-    score = max(0.0, min(1.0, score))
-    pct = int(score * 100)
-    if score >= 0.8:
-        color = "#00ff41"
-    elif score >= 0.6:
-        color = "#ffb000"
-    elif score >= 0.4:
-        color = "#ff8c00"
-    else:
-        color = "#ff0040"
-    return (
-        f'<div class="score-bar">'
-        f'<div class="bar-fill" style="width:{pct}%;background:{color}"></div>'
-        f'<span class="bar-label">{score:.2f}</span>'
-        f"</div>"
-    )
-
-
-def _build_config_summary(config: dict[str, Any]) -> str:
-    models = config.get("models", [])
-    model_names = ", ".join(html.escape(m.get("name", "?")) for m in models)
-    return (
-        f"<ul>"
-        f"<li><strong>Models:</strong> {model_names}</li>"
-        f"<li><strong>Games per matchup:</strong> {config.get('num_games', 10)}</li>"
-        f"<li><strong>Opponents per model:</strong> {config.get('num_opponents', 6)}</li>"
-        f"<li><strong>Max turns:</strong> {config.get('max_turns', 100)}</li>"
-        f"<li><strong>Speed multiplier:</strong> {config.get('speed_multiplier', 1)}×</li>"
-        f"<li><strong>Catastrophes per game:</strong> {config.get('num_catastrophes', 5)}</li>"
-        f"<li><strong>Seed mode:</strong> {'Fixed' if config.get('seed_fixed', True) else 'Random'}</li>"
-        f"</ul>"
-    )
-
-
-def _build_per_model_details(model_stats: dict[str, Any]) -> str:
+def _build_per_model_details(
+    model_stats: dict[str, Any],
+    dimensions: dict[str, Any],
+    rankings: list[dict[str, Any]],
+) -> str:
     if not model_stats:
-        return "<p>No detailed model statistics available.</p>"
+        return "<p class='muted'>No model statistics available.</p>"
 
     sections = []
-    for name, stats in model_stats.items():
-        escaped_name = html.escape(str(name))
-        scores = stats.get("scores", [])
-        avg = stats.get("avg_score", 0)
-        valid = stats.get("total_valid", 0)
+    for r in rankings:
+        name  = r.get("name", "?")
+        stats = model_stats.get(name, {})
+        if not stats:
+            continue
+
+        escaped = html.escape(str(name))
+        scores  = stats.get("scores", [])
+        avg     = stats.get("avg_score", 0)
+        valid   = stats.get("total_valid", 0)
         invalid = stats.get("total_invalid", 0)
-        total = valid + invalid
+        total   = valid + invalid
+        valid_pct = f"{valid / total * 100:.0f}%" if total else "—"
+        comp    = r.get("composite_score")
+        arch    = str(r.get("archetype", "—")).title()
+        trend   = str(r.get("trend", "—")).title()
 
-        # Mini sparkline via CSS
-        spark_points = ""
-        if scores:
-            max_s = max(scores) if scores else 1
-            min_s = min(scores) if scores else 0
-            rng = max_s - min_s if max_s != min_s else 1
-            normalized = [(s - min_s) / rng * 40 for s in scores]
-            spark_points = " ".join(f"{i * 4},{40 - v}" for i, v in enumerate(normalized))
-
-        sparkline_svg = ""
-        if spark_points:
-            width = len(scores) * 4
-            sparkline_svg = (
-                f'<svg class="sparkline" width="{width}" height="40" viewBox="0 0 {width} 40">'
-                f'<polyline points="{spark_points}" fill="none" stroke="#00ff41" stroke-width="1.5"/>'
+        # Score sparkline
+        sparkline = ""
+        if len(scores) > 1:
+            mn, mx = min(scores), max(scores)
+            rng = mx - mn or 1
+            pts = " ".join(f"{i*6},{44 - (s-mn)/rng*40:.1f}" for i, s in enumerate(scores))
+            w   = len(scores) * 6
+            sparkline = (
+                f'<svg class="sparkline" width="{w}" height="48" viewBox="0 0 {w} 48">'
+                f'<polyline points="{pts}" fill="none" stroke="#2563eb" stroke-width="2" stroke-linejoin="round"/>'
                 f"</svg>"
             )
 
+        comp_badge = f'<span class="badge badge-blue">Composite {comp:.3f}</span>' if comp is not None else ""
+        arch_badge = f'<span class="badge badge-gray">{arch}</span>'
+        trend_badge = f'<span class="badge badge-gray">{trend}</span>'
+
         sections.append(
-            f'<div class="model-detail">'
-            f"<h3>{escaped_name}</h3>"
-            f"<p>Avg Score: <strong>{avg:.1f}</strong> │ "
-            f"Valid: {valid}/{total} ({valid / total * 100:.0f}% valid) │ "
-            f"Games: {stats.get('games_played', 0)}</p>"
-            f'<p>Score range: {stats.get("min_score", 0):.0f} – {stats.get("max_score", 0):.0f}</p>'
-            f"{sparkline_svg}"
-            f"</div>"
+            f'<div class="card">'
+            f'<div class="card-header">'
+            f'<span class="card-title">{escaped}</span>'
+            f'<span class="badge-group">{comp_badge}{arch_badge}{trend_badge}</span>'
+            f'</div>'
+            f'<div class="card-stats">'
+            f'<div class="stat-item"><span class="stat-val">{avg:.0f}</span><span class="stat-lbl">Avg Score</span></div>'
+            f'<div class="stat-item"><span class="stat-val">{valid_pct}</span><span class="stat-lbl">Valid Rate</span></div>'
+            f'<div class="stat-item"><span class="stat-val">{stats.get("games_played", 0)}</span><span class="stat-lbl">Games</span></div>'
+            f'<div class="stat-item"><span class="stat-val">{stats.get("min_score", 0):.0f} – {stats.get("max_score", 0):.0f}</span><span class="stat-lbl">Score Range</span></div>'
+            f'</div>'
+            f'{sparkline}'
+            f'</div>'
         )
 
     return "\n".join(sections)
 
 
-# ─── HTML Template ───────────────────────────────────────────────────────────
+def _build_config_summary(config: dict[str, Any]) -> str:
+    models      = config.get("models", [])
+    model_names = ", ".join(html.escape(m.get("name", "?")) for m in models) or "—"
+    opponents   = config.get("opponents", config.get("num_opponents", "—"))
+    if isinstance(opponents, list):
+        opponents = ", ".join(str(o) for o in opponents)
+
+    rows = [
+        ("Models",             model_names),
+        ("Games per matchup",  config.get("games_per_matchup", config.get("num_games", "—"))),
+        ("Max turns",          config.get("max_turns", "—")),
+        ("Speed multiplier",   f"{config.get('speed_multiplier', 1)}×"),
+        ("Opponents",          opponents),
+        ("Seed mode",          "Fixed" if config.get("seed_fixed", config.get("seed_mode") == "fixed") else "Random"),
+        ("Weight preset",      str(config.get("weight_preset", "balanced")).title()),
+    ]
+    items = "".join(f"<tr><td class='cfg-key'>{k}</td><td>{html.escape(str(v))}</td></tr>" for k, v in rows)
+    return f"<table class='cfg-table'><tbody>{items}</tbody></table>"
+
+
+# ─── HTML Template ────────────────────────────────────────────────────────────
 
 _TEMPLATE = """\
 <!DOCTYPE html>
@@ -221,223 +368,337 @@ _TEMPLATE = """\
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Terminus LLM Benchmark Report — {timestamp}</title>
+<title>Terminus LLM Benchmark — {timestamp}</title>
 <style>
-:root {{
-    --bg: #0d1117;
-    --surface: #161b22;
-    --border: #30363d;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --green: #00ff41;
-    --amber: #ffb000;
-    --red: #ff0040;
-    --cyan: #00d4ff;
-    --gold: #ffd700;
-}}
-* {{ margin: 0; padding: 0; box-sizing: border-box; }}
+/* ── Reset & base ─────────────────────────────── */
+*, *::before, *::after {{ box-sizing: border-box; margin: 0; padding: 0; }}
 body {{
-    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.6;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.6;
+  background: #f8fafc;
+  color: #1e293b;
 }}
-h1 {{
-    color: var(--green);
-    text-align: center;
-    font-size: 1.8rem;
-    margin-bottom: 0.5rem;
-    text-shadow: 0 0 10px rgba(0, 255, 65, 0.3);
+a {{ color: #2563eb; text-decoration: none; }}
+
+/* ── Layout ───────────────────────────────────── */
+.page-wrap {{
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
 }}
-h2 {{
-    color: var(--amber);
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 0.5rem;
-    margin: 2rem 0 1rem;
+
+/* ── Header ───────────────────────────────────── */
+.report-header {{
+  text-align: center;
+  padding: 2.5rem 0 2rem;
+  border-bottom: 2px solid #e2e8f0;
+  margin-bottom: 2rem;
 }}
-h3 {{
-    color: var(--cyan);
-    margin-bottom: 0.5rem;
+.report-header h1 {{
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #0f172a;
 }}
-.subtitle {{
-    text-align: center;
-    color: var(--muted);
-    margin-bottom: 2rem;
+.report-header .subtitle {{
+  margin-top: 0.3rem;
+  color: #64748b;
+  font-size: 0.875rem;
 }}
+
+/* ── Stats bar ────────────────────────────────── */
 .stats-bar {{
-    display: flex;
-    justify-content: center;
-    gap: 2rem;
-    padding: 1rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    margin-bottom: 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 2.5rem;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }}
-.stat {{
-    text-align: center;
+.stat-item-top {{
+  flex: 1;
+  min-width: 120px;
+  padding: 1.1rem 1rem;
+  text-align: center;
+  border-right: 1px solid #e2e8f0;
 }}
-.stat-value {{
-    font-size: 1.5rem;
-    font-weight: bold;
-    color: var(--green);
+.stat-item-top:last-child {{ border-right: none; }}
+.stat-val-top {{
+  display: block;
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #2563eb;
+  line-height: 1.2;
 }}
-.stat-label {{
-    font-size: 0.8rem;
-    color: var(--muted);
+.stat-lbl-top {{
+  display: block;
+  font-size: 0.75rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-top: 0.15rem;
+}}
+
+/* ── Section headings ─────────────────────────── */
+.section-heading {{
+  font-size: 1rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 2.5rem 0 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 2px solid #e2e8f0;
+  letter-spacing: 0.02em;
+}}
+
+/* ── Tables ───────────────────────────────────── */
+.table-wrap {{
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 10px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
 }}
 table {{
-    width: 100%;
-    border-collapse: collapse;
-    margin: 1rem 0;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    overflow: hidden;
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  font-size: 13.5px;
 }}
+thead tr {{ background: #f1f5f9; }}
 th {{
-    background: #1c2128;
-    color: var(--amber);
-    padding: 0.75rem 1rem;
-    text-align: left;
-    font-size: 0.85rem;
-    white-space: nowrap;
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+  border-bottom: 1px solid #e2e8f0;
 }}
 td {{
-    padding: 0.6rem 1rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.9rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #f1f5f9;
+  vertical-align: middle;
 }}
-tr:hover {{ background: #1c2128; }}
-tr.gold td:first-child {{ color: var(--gold); font-weight: bold; }}
-tr.silver td:first-child {{ color: #c0c0c0; font-weight: bold; }}
-tr.bronze td:first-child {{ color: #cd7f32; font-weight: bold; }}
-.score-bar {{
-    position: relative;
-    height: 20px;
-    background: #21262d;
-    border-radius: 3px;
-    overflow: hidden;
-    min-width: 80px;
+tbody tr:last-child td {{ border-bottom: none; }}
+tbody tr:hover {{ background: #f8fafc; }}
+.num {{ text-align: right; }}
+
+/* rank colouring */
+tr.gold td:first-child   {{ color: #b45309; font-weight: 700; }}
+tr.silver td:first-child {{ color: #64748b; font-weight: 700; }}
+tr.bronze td:first-child {{ color: #b05e28; font-weight: 700; }}
+
+/* dimension table */
+.dim-table th:first-child,
+.dim-table td:first-child {{ width: 150px; }}
+.dim-table td {{ text-align: center; }}
+.dim-label {{ text-align: left !important; color: #475569; font-size: 0.8rem; }}
+.composite-row td {{ background: #f8fafc; }}
+.composite-row td.dim-label {{ color: #0f172a; }}
+
+/* config table */
+.cfg-table {{ border: none; box-shadow: none; font-size: 13.5px; }}
+.cfg-table td {{ border-bottom: 1px solid #f1f5f9; padding: 0.5rem 0.75rem; }}
+.cfg-key {{ color: #64748b; font-weight: 500; width: 180px; }}
+
+/* metric table */
+.metric-table {{ font-size: 12.5px; border: none; box-shadow: none; }}
+.metric-table th {{ background: #fff; font-size: 0.7rem; }}
+.metric-table td {{ padding: 0.4rem 0.75rem; }}
+.metric-label {{ color: #334155; }}
+.metric-feeds {{ font-size: 0.7rem; }}
+.sample-count {{ color: #94a3b8; font-size: 0.75rem; }}
+
+/* ── Pill scores ──────────────────────────────── */
+.pill {{
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-width: 44px;
+  text-align: center;
 }}
-.bar-fill {{
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.3s;
+.pill-high  {{ background: #dcfce7; color: #15803d; }}
+.pill-mid   {{ background: #fef9c3; color: #a16207; }}
+.pill-low   {{ background: #ffedd5; color: #c2410c; }}
+.pill-zero  {{ background: #fee2e2; color: #b91c1c; }}
+
+/* ── Badges ───────────────────────────────────── */
+.badge {{
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  margin-left: 0.4rem;
 }}
-.bar-label {{
-    position: absolute;
-    right: 4px;
-    top: 1px;
-    font-size: 0.75rem;
-    color: var(--text);
-    font-weight: bold;
+.badge-blue {{ background: #dbeafe; color: #1d4ed8; }}
+.badge-gray {{ background: #f1f5f9; color: #475569; }}
+.badge-group {{ display: inline-flex; align-items: center; flex-wrap: wrap; gap: 0.2rem; }}
+
+/* ── Model cards ──────────────────────────────── */
+.card {{
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.05);
 }}
-.model-detail {{
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 1.5rem;
-    margin: 1rem 0;
+.card-header {{
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
 }}
-.model-detail p {{
-    color: var(--muted);
-    margin: 0.3rem 0;
+.card-title {{ font-size: 1rem; font-weight: 700; color: #0f172a; }}
+.card-stats {{
+  display: flex;
+  gap: 2rem;
+  flex-wrap: wrap;
 }}
-.sparkline {{
-    margin-top: 0.5rem;
+.stat-item {{ display: flex; flex-direction: column; }}
+.stat-val {{ font-size: 1.1rem; font-weight: 700; color: #0f172a; }}
+.stat-lbl {{ font-size: 0.72rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }}
+.sparkline {{ display: block; margin-top: 1rem; }}
+
+/* ── Accordion (Tier-1) ───────────────────────── */
+.accordion {{
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  margin-bottom: 0.75rem;
+  overflow: hidden;
+  background: #fff;
 }}
-.note {{
-    color: var(--muted);
-    font-style: italic;
-    font-size: 0.85rem;
-    margin-top: 1rem;
+.accordion summary {{
+  padding: 0.9rem 1.25rem;
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #0f172a;
+  background: #f8fafc;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 0.9rem;
 }}
-ul {{
-    list-style: none;
-    padding: 0;
+.accordion summary::-webkit-details-marker {{ display: none; }}
+.accordion summary::after {{
+  content: "▾";
+  color: #94a3b8;
+  font-size: 1rem;
+  transition: transform 0.2s;
 }}
-ul li {{
-    padding: 0.3rem 0;
-    color: var(--muted);
+.accordion[open] summary::after {{ transform: rotate(-180deg); }}
+.accordion-body {{ padding: 1rem 1.25rem; }}
+.metric-group {{ margin-bottom: 1.25rem; }}
+.metric-group:last-child {{ margin-bottom: 0; }}
+.metric-group-title {{
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #94a3b8;
+  margin-bottom: 0.5rem;
 }}
-ul li strong {{
-    color: var(--text);
-}}
+
+/* ── Misc ─────────────────────────────────────── */
+.muted {{ color: #94a3b8; font-size: 0.85rem; }}
 .footer {{
-    text-align: center;
-    color: var(--muted);
-    margin-top: 3rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--border);
-    font-size: 0.8rem;
+  text-align: center;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid #e2e8f0;
+  color: #94a3b8;
+  font-size: 0.8rem;
 }}
 </style>
 </head>
 <body>
-<h1>TERMINUS LLM BENCHMARK</h1>
-<p class="subtitle">Report generated: {timestamp}</p>
+<div class="page-wrap">
 
-<div class="stats-bar">
-    <div class="stat">
-        <div class="stat-value">{total_games}</div>
-        <div class="stat-label">Games Played</div>
-    </div>
-    <div class="stat">
-        <div class="stat-value">{num_models}</div>
-        <div class="stat-label">Models Tested</div>
-    </div>
-    <div class="stat">
-        <div class="stat-value">{elapsed}</div>
-        <div class="stat-label">Duration</div>
-    </div>
-    <div class="stat">
-        <div class="stat-value">{speed}×</div>
-        <div class="stat-label">Speed</div>
-    </div>
-    <div class="stat">
-        <div class="stat-value">{max_turns}</div>
-        <div class="stat-label">Max Turns</div>
-    </div>
-    <div class="stat">
-        <div class="stat-value">{num_catastrophes}</div>
-        <div class="stat-label">Catastrophes</div>
-    </div>
-</div>
+  <!-- Header -->
+  <div class="report-header">
+    <h1>TERMINUS LLM BENCHMARK</h1>
+    <p class="subtitle">Report generated {timestamp}</p>
+  </div>
 
-<h2>Final Rankings</h2>
-<table>
-<thead>
-<tr>
-    <th>#</th>
-    <th>Model</th>
-    <th>Avg Score</th>
-    <th>Valid Rate</th>
-    <th>Games</th>
-    <th>Consistency</th>
-    <th>Trend</th>
-</tr>
-</thead>
-<tbody>
-{rankings_rows}
-</tbody>
-</table>
+  <!-- Stats bar -->
+  <div class="stats-bar">
+    <div class="stat-item-top">
+      <span class="stat-val-top">{total_games}</span>
+      <span class="stat-lbl-top">Games</span>
+    </div>
+    <div class="stat-item-top">
+      <span class="stat-val-top">{num_models}</span>
+      <span class="stat-lbl-top">Models</span>
+    </div>
+    <div class="stat-item-top">
+      <span class="stat-val-top">{elapsed}</span>
+      <span class="stat-lbl-top">Duration</span>
+    </div>
+    <div class="stat-item-top">
+      <span class="stat-val-top">{speed}×</span>
+      <span class="stat-lbl-top">Speed</span>
+    </div>
+    <div class="stat-item-top">
+      <span class="stat-val-top">{max_turns}</span>
+      <span class="stat-lbl-top">Max Turns</span>
+    </div>
+    <div class="stat-item-top">
+      <span class="stat-val-top">{num_catastrophes}</span>
+      <span class="stat-lbl-top">Catastrophes</span>
+    </div>
+  </div>
 
-<h2>Cognitive Dimensions</h2>
-{dimension_table}
+  <!-- Rankings -->
+  <h2 class="section-heading">Final Rankings</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Model</th><th>Composite</th>
+          <th>Avg Score</th><th>Valid Rate</th><th>Games</th>
+          <th>Archetype</th><th>Trend</th>
+        </tr>
+      </thead>
+      <tbody>{rankings_rows}</tbody>
+    </table>
+  </div>
 
-<h2>Per-Model Analysis</h2>
-{per_model_details}
+  <!-- Cognitive Dimensions -->
+  <h2 class="section-heading">Cognitive Dimensions</h2>
+  {dimension_table}
 
-<h2>Configuration</h2>
-{config_summary}
+  <!-- Tier-1 Drill-down -->
+  <h2 class="section-heading">Tier-1 Metric Drill-Down</h2>
+  {tier1_section}
 
-<div class="footer">
-    <p>Generated by Terminus LLM Benchmark Suite</p>
-    <p>github.com/kushal-DL/terminus</p>
+  <!-- Per-Model Summary -->
+  <h2 class="section-heading">Per-Model Summary</h2>
+  {per_model_html}
+
+  <!-- Configuration -->
+  <h2 class="section-heading">Configuration</h2>
+  <div class="table-wrap">
+    {config_html}
+  </div>
+
+  <div class="footer">
+    <p>Generated by Terminus LLM Benchmark Suite &nbsp;·&nbsp;
+       <a href="https://github.com/kushal-DL/terminus">github.com/kushal-DL/terminus</a>
+    </p>
+  </div>
+
 </div>
 </body>
 </html>

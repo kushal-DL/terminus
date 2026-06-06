@@ -323,7 +323,7 @@ class TestHtmlReportGeneration:
 
         html_content = list(tmp_path.glob("*.html"))[0].read_text(encoding="utf-8")
         assert "Cognitive Dimensions" in html_content
-        assert "score-bar" in html_content
+        assert "pill" in html_content  # dimension score pills
 
     @pytest.mark.asyncio
     async def test_report_path_in_benchmark_completed_event(self, tmp_path: Path):

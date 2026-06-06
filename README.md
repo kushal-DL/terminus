@@ -1,27 +1,52 @@
 # Terminus
 
-Multiplayer CLI survival strategy game. Manage your settlement, allocate workers, build structures, and survive catastrophes — all in your terminal.
+Multiplayer CLI survival strategy game — and LLM benchmark platform. Manage your settlement, allocate workers, build structures, survive catastrophes, and trade resources — all in your terminal. In benchmark mode, run any LLM through the same game and score it across 8 cognitive dimensions.
 
 ![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
+![Tests](https://img.shields.io/badge/tests-594%20passing-brightgreen)
 [![PyPI](https://img.shields.io/pypi/v/terminus-game)](https://pypi.org/project/terminus-game/)
 
 ---
 
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [Preview](#preview)
-- [Install](#install)
-- [Run the Game](#run-the-game)
-- [Step-by-Step: Playing Your First Game](#step-by-step-playing-your-first-game)
+- [Install Options](#install-options)
+- [Playing the Game](#playing-the-game)
 - [Multiplayer Setup](#multiplayer-setup)
+- [LLM Benchmark Mode](#llm-benchmark-mode)
 - [Gameplay Guide](#gameplay-guide)
-- [Audio & Sound Effects](#audio--sound-effects)
+- [Audio](#audio)
 - [Commands Reference](#commands-reference)
-- [Dev Console (Admin Tools)](#dev-console-admin-tools)
+- [Dev Console](#dev-console)
 - [Development](#development)
 - [FAQ & Troubleshooting](#faq--troubleshooting)
 - [License](#license)
+
+---
+
+## Quick Start
+
+**Windows — double-click to play, no setup needed:**
+1. [Download the repo](https://github.com/kushal-DL/terminus/archive/refs/heads/main.zip) and unzip
+2. Double-click **`play.bat`**
+
+That's it. The launcher creates a virtual environment, installs everything, and starts the game automatically. Subsequent launches are instant.
+
+**Mac / Linux:**
+```bash
+git clone https://github.com/kushal-DL/terminus.git
+cd terminus
+bash play.sh
+```
+
+**pip install:**
+```bash
+pip install terminus-game
+terminus
+```
 
 ---
 
@@ -40,67 +65,55 @@ Multiplayer CLI survival strategy game. Manage your settlement, allocate workers
 <td align="center"><strong>Market Trading</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/market.gif" width="380" alt="Market buy and sell"></td>
 <td align="center"><strong>Multiplayer Lobby</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/lobby.gif" width="380" alt="Players joining lobby"></td>
 </tr>
-<tr>
-<td align="center" colspan="2"><strong>Dev Panel (Host-Only)</strong><br><img src="https://raw.githubusercontent.com/kushal-DL/terminus/develop/docs/gifs/dev-panel.gif" width="380" alt="F12 admin dev panel"></td>
-</tr>
 </table>
 
 ---
 
-## Install
+## Install Options
 
-### Option 1: pip install (recommended)
+### Option 1: Launcher scripts (easiest — no terminal knowledge needed)
+
+**Windows:** download the repo, double-click `play.bat`
+
+**Mac/Linux:**
+```bash
+git clone https://github.com/kushal-DL/terminus.git && cd terminus && bash play.sh
+```
+
+The launcher automatically:
+- Checks Python is installed (needs 3.11+)
+- Creates a `.venv` virtual environment on first run
+- Installs all dependencies
+- Launches the game
+
+### Option 2: pip install
 
 ```bash
 pip install terminus-game
+terminus
 ```
 
-This installs the `terminus` command and all dependencies automatically.
-
-### Option 2: Install from GitHub (latest development version)
-
-```bash
-pip install git+https://github.com/kushal-DL/terminus.git
-```
-
-### Option 3: Clone and install from source
+### Option 3: From source (for development)
 
 ```bash
 git clone https://github.com/kushal-DL/terminus.git
 cd terminus
-pip install .
-```
-
-For development (editable install with test dependencies):
-
-```bash
 pip install -e ".[dev]"
+python -m terminus
 ```
-
-### Option 4: Pre-built executable (no Python needed)
-
-Download the latest release for your platform from [GitHub Releases](https://github.com/kushal-DL/terminus/releases). Just download, extract, and run — no Python installation required.
 
 ### Prerequisites
 
-- **Python 3.11 or newer** (for pip install methods)
-- **Terminal with Unicode support** (Windows Terminal, iTerm2, most Linux terminals)
-- **cloudflared** (optional — only for `--public` mode to share games over the internet)
+- **Python 3.11 or newer** — download from [python.org](https://www.python.org/downloads/) (Windows: tick "Add Python to PATH")
+- **Windows Terminal** recommended on Windows (not cmd.exe) for best Unicode rendering
+- **cloudflared** — optional, only needed for `--public` internet multiplayer
 
 ---
 
-## Run the Game
-
-After installing, run the game with:
+## Playing the Game
 
 ```bash
-terminus
-```
-
-Or if the `terminus` command isn't found (see [FAQ](#faq--troubleshooting)):
-
-```bash
-python -m terminus
+terminus          # or: python -m terminus
 ```
 
 ### Command-Line Options
@@ -112,73 +125,32 @@ python -m terminus
 | `--public` | Create a public URL via cloudflared tunnel |
 | `--server-only` | Run headless server without TUI client |
 | `--verbose` | Enable debug logging |
+| `--benchmark [CONFIG]` | Run LLM benchmark (see below) |
 
-### Examples
+### Your First Game
 
-```bash
-terminus                     # Start game (server + client)
-terminus --port 9090         # Use custom port
-terminus --public            # Share over internet via tunnel
-terminus --server-only       # Dedicated server mode
-python -m terminus --verbose # Debug mode (alternative invocation)
-```
-
----
-
-## Step-by-Step: Playing Your First Game
-
-### 1. Launch
-
-```bash
-pip install terminus-game
-terminus
-```
-
-You'll see the main menu with retro terminal aesthetics.
-
-### 2. Create a Game
-
-- Select **"Create Game"**
-- Enter your player name
-- The game will start a local server and show you in the lobby
-
-### 3. Choose Location & Specialization
-
-Once the host starts the game, you'll pick:
-- **Location** (Coast, Mountain, Plains, Forest, Desert) — affects production multipliers
-- **Specialization** (Military, Trade, Science, Agriculture) — gives bonus effects
-
-### 4. Play
-
-The main colony screen shows your resources, workers, and buildings. Each "tick" (every few seconds):
-- Workers produce resources based on their role
-- Food is consumed by your population
-- Buildings under construction make progress
-
-### 5. Survive Catastrophes
-
-Five catastrophes hit during the game. Build defenses, allocate workers to defense/medicine, and use the watchtower for early warnings.
-
-### 6. Win
-
-After all catastrophes, the player with the highest score wins! Score is based on: population, resources, buildings, morale, and survival.
+1. **Launch** → Select **"Create Game"** → enter your name
+2. **Choose location** (Coast, Mountain, Plains, Forest, Desert) and **specialization** (Military, Trade, Science, Agriculture)
+3. **Manage your colony** — allocate workers, build structures, trade at the market
+4. **Survive 5 catastrophes** — use the watchtower for early warnings, build defenses
+5. **Highest score wins** — based on population, resources, buildings, and morale
 
 ---
 
 ## Multiplayer Setup
 
-### Local Network (same WiFi/LAN)
+### Local Network (same WiFi)
 
 1. **Host** runs: `terminus`
-2. Host shares their local IP and port (shown in game), e.g. `http://192.168.1.50:8080`
+2. Host shares their IP and port shown in the lobby (e.g. `http://192.168.1.50:8080`)
 3. **Players** run: `terminus` → "Join Game" → paste the URL
 
-### Over the Internet (public URL)
+### Over the Internet
 
 1. Install [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/)
 2. **Host** runs: `terminus --public`
-3. A public URL (e.g. `https://abc-xyz.trycloudflare.com`) will be displayed
-4. **Players** run: `terminus` → "Join Game" → paste the public URL
+3. A public URL (e.g. `https://abc-xyz.trycloudflare.com`) appears in the lobby
+4. **Players** run: `terminus` → "Join Game" → paste the URL
 
 ### Dedicated Server
 
@@ -186,7 +158,94 @@ After all catastrophes, the player with the highest score wins! Score is based o
 terminus --server-only --port 8080
 ```
 
-Players connect via the server's IP. The server runs headless (no TUI). Supports up to 250 concurrent players.
+---
+
+## LLM Benchmark Mode
+
+Terminus v0.3.0 ships a complete LLM benchmark platform. Run any LLM through headless games and score it across **8 cognitive dimensions** that predict production agentic performance.
+
+### Quick benchmark run
+
+```bash
+# Copy and edit the example config
+cp benchmark-config.example.json my-benchmark.json
+
+# Run — no TUI needed
+python run_benchmark.py my-benchmark.json
+```
+
+Or through the TUI:
+```bash
+terminus --benchmark   # opens the benchmark setup screen
+```
+
+### Config file format
+
+```json
+{
+  "models": [
+    {
+      "name": "GPT-4o",
+      "provider": "openai",
+      "endpoint": "https://api.openai.com/v1",
+      "model": "gpt-4o",
+      "api_key_env": "OPENAI_API_KEY"
+    }
+  ],
+  "games_per_matchup": 3,
+  "max_turns": 100,
+  "speed_multiplier": 5,
+  "opponents": ["random", "greedy", "balanced"],
+  "weight_preset": "balanced",
+  "output_dir": "./benchmark-results"
+}
+```
+
+Supported providers: `openai`, `anthropic`, `google`, `ollama` — and any OpenAI-compatible endpoint (NVIDIA Build, Together AI, Groq, vLLM, etc.).
+
+For thinking/reasoning models (e.g. NVIDIA Nemotron):
+```json
+{
+  "extra_body": {
+    "chat_template_kwargs": {"enable_thinking": true},
+    "reasoning_budget": 1024
+  },
+  "timeout_seconds": 180
+}
+```
+
+### What gets measured
+
+| Dimension | What it predicts |
+|-----------|-----------------|
+| Multi-Decision Coherence | Agent step budget before self-contradiction |
+| Applied Arithmetic Under Load | Tool-call parameter reliability as context grows |
+| Priority Triage | Incident response: does it address P0 before P2? |
+| Compounding Error Recognition | Self-healing: catches snowballing mistakes early |
+| Justified Pivot vs Inconsistency | Stable implementations vs constant rewrites |
+| Graceful Degradation | SLA predictability — gradual vs cliff failure |
+| Opportunity Cost Awareness | Solution quality ceiling |
+| Game-Theoretic Sophistication | Multi-agent robustness |
+
+### Outputs
+
+Each run writes to `./benchmark-results/`:
+- `*_report.html` — interactive report with dimension scores and rankings
+- `*_results.json` — full structured data for programmatic analysis
+- `*_summary.csv` — one row per model, all 8 dimensions as columns
+- `*_detailed.csv` — one row per game
+- `*_summary.md` — GitHub-ready markdown with archetype emoji
+
+### 6 Built-in Opponents
+
+| Opponent | Strategy | Tests |
+|----------|----------|-------|
+| Random | Uniform random actions | Baseline floor |
+| Greedy | Maximises immediate value | Beats random but ignores future |
+| Balanced | Optimal build order + smart allocation | "Par" opponent |
+| Rush | Aggressive early expansion | Tests late-game consistency |
+| Turtle | Heavy defense, slow growth | Tests patience and planning |
+| Adversarial | Adapts to exploit LLM weaknesses | Tests manipulation resistance |
 
 ---
 
@@ -196,21 +255,25 @@ Players connect via the server's IP. The server runs headless (no TUI). Supports
 
 | Resource | Produced By | Used For |
 |----------|-------------|----------|
-| 🌾 Food | Farming workers + Farm building | Feeding population (consumed each tick) |
-| ⛏ Materials | Mining workers + Mine building | Building & repairing structures |
-| 🔬 Knowledge | Research workers + Lab building | Unlocking upgrades |
-| 💰 Gold | Trade + Market | Buying resources at market |
+| 🌾 Food | Farming workers + Farm | Feeding population each tick |
+| ⛏ Materials | Mining workers + Mine | Building and repairing |
+| 🔬 Knowledge | Research workers + Lab | Upgrades |
+| 💰 Gold | Trade + Market | Buying resources |
 
 ### Buildings (up to Level 3)
 
 | Building | Effect |
 |----------|--------|
 | Farm | +food production |
-| Wall | Reduces catastrophe damage |
-| Hospital | +healing, reduces population loss |
+| Mine | +materials production |
 | Lab | +knowledge production |
-| Warehouse | Increases resource storage capacity |
+| Market | +gold, market discounts |
+| Hospital | Reduces plague/disease casualties |
+| Wall | Reduces all catastrophe damage |
+| Warehouse | Increases storage capacity |
 | Housing | Increases max population |
+| School | +knowledge, +morale |
+| Watchtower | Catastrophe early warning |
 
 ### Worker Roles
 
@@ -225,44 +288,23 @@ Players connect via the server's IP. The server runs headless (no TUI). Supports
 
 ### Key Strategies
 
-- **Balance food production** — starvation kills morale and population
-- **Build walls early** — reduces damage from all catastrophes
-- **Watch the watchtower** — gives hints about the next catastrophe type
+- **Balance food production** — starvation kills morale and population fast
+- **Build walls early** — reduces damage from all catastrophe types
+- **Watch the watchtower** — gives hints about the next catastrophe
 - **Trade wisely** — market prices fluctuate, buy low and sell high
-- **Upgrade buildings** — level 2 and 3 buildings are significantly more powerful
+- **Upgrade buildings** — level 2 and 3 are significantly more powerful
 
 ---
 
-## Audio & Sound Effects
+## Audio
 
-Terminus includes retro 8-bit sound effects that bring the terminal to life:
-
-| Event | Sound |
-|-------|-------|
-| Build started | Rising chirp |
-| Build complete | C-E-G arpeggio jingle |
-| Catastrophe warning | Alarm klaxon |
-| Catastrophe hit | Noise burst impact |
-| Trade complete | Cash register blip |
-| Worker allocated | Click/tick |
-| Game start | 4-note fanfare |
-| Game over | Descending tone |
-
-### Enable/Disable
-
-Press **Ctrl+S** during gameplay to toggle sound on/off. Your preference is saved across sessions.
-
-### Install audio support
-
-Sound playback requires the optional `simpleaudio` package:
+Terminus includes retro 8-bit sound effects. Press **Ctrl+S** to toggle. For full audio support:
 
 ```bash
 pip install terminus-game[audio]
 ```
 
-On Windows, the built-in `winsound` module is used as a fallback (no extra install needed).
-
-> **Note**: All sounds are synthesized programmatically — no audio files are downloaded or shipped. If no audio backend is available, sounds are silently disabled.
+On Windows, `winsound` is used as a fallback — no extra install needed. All sounds are synthesized in Python; no audio files are downloaded.
 
 ---
 
@@ -270,162 +312,104 @@ On Windows, the built-in `winsound` module is used as a fallback (no extra insta
 
 | Command | Description |
 |---------|-------------|
-| `terminus` | Launch game (server + TUI client) |
+| `terminus` | Launch game (server + TUI) |
 | `terminus --public` | Launch with public cloudflared URL |
 | `terminus --server-only` | Headless dedicated server |
 | `terminus --port PORT` | Custom port (default: 8080) |
+| `terminus --benchmark` | Open benchmark setup in TUI |
+| `terminus --benchmark config.json` | Run benchmark headlessly from JSON config |
 | `terminus --verbose` | Debug logging |
-| `python -m terminus` | Alternative invocation (no PATH needed) |
-| `python -m terminus.dev --server URL` | Dev console (requires `TERMINUS_DEV_MODE=1`) |
+| `python -m terminus` | Alternative — works without PATH setup |
 
 ---
 
-## Dev Console (Admin Tools)
-
-For debugging and testing, Terminus includes a dev console TUI:
+## Dev Console
 
 ```bash
-# Start the game server first
+# Start the game server
 terminus --server-only
 
-# In another terminal, launch the dev console
-# Windows PowerShell:
-$env:TERMINUS_DEV_MODE = "1"
-python -m terminus.dev --server http://127.0.0.1:8080
+# In another terminal:
+# Windows:
+$env:TERMINUS_DEV_MODE = "1"; python -m terminus.dev --server http://127.0.0.1:8080
 
 # Linux/macOS:
 TERMINUS_DEV_MODE=1 python -m terminus.dev --server http://127.0.0.1:8080
 ```
 
-**Features:**
-- Real-time state inspection (resources, workers, buildings per player)
-- Override player resources
-- Trigger catastrophes instantly
-- Speed up/slow down catastrophe intervals
-- Instantly complete all buildings under construction
+Features: real-time state inspection, override resources, trigger catastrophes, speed up intervals, complete buildings instantly.
 
 ---
 
 ## Development
 
 ```bash
-# Clone and install
 git clone https://github.com/kushal-DL/terminus.git
 cd terminus
 pip install -e ".[dev]"
 
-# Run tests (135 tests)
-pytest tests/ -v
+# Run all tests (594 passing)
+pytest
 
-# Run balance simulator
-python -m tools.balance.simulator --preset standard --games 10
+# Run fast subset (skips slow benchmark integration tests)
+pytest -m "not slow"
 
-# Run load test
-python tools/load_test.py --players 20 --duration 60
-
-# Build standalone executable
-pip install -e ".[build]"
-python tools/build_exe.py
+# Run benchmark with mock LLM (no API key needed)
+TERMINUS_BENCHMARK_MOCK=1 python -m terminus
 ```
 
 ---
 
 ## FAQ & Troubleshooting
 
-### `terminus` command not found after install
+### `play.bat` opens and closes instantly
 
-**Cause:** pip installed the script to a directory not on your PATH.
+Python is not installed or not on PATH. Install from [python.org](https://www.python.org/downloads/) — tick "Add Python to PATH" during install, then try again.
 
-**Fix (Windows):**
-```powershell
-# Option A: Use python -m (works immediately)
+### `terminus` command not found after `pip install`
+
+```bash
+# Works immediately without PATH setup:
 python -m terminus
 
-# Option B: Add Scripts to PATH permanently
-# pip shows the path in install output, e.g.:
-# C:\Users\YOU\AppData\Local\...\Scripts
-# Add that directory to your system PATH, then restart your terminal.
-```
-
-**Fix (Linux/macOS):**
-```bash
-# The script is usually in ~/.local/bin — add to PATH:
-export PATH="$HOME/.local/bin:$PATH"
-# Add to ~/.bashrc or ~/.zshrc to make permanent
+# Or add pip's Scripts directory to PATH (shown in pip install output)
 ```
 
 ### `terminus` — "Access is denied" on Windows
 
-**Cause:** Windows or your antivirus is blocking the newly installed `terminus.exe`.
-
-**Fix:**
 ```powershell
-# Option A: Use python -m (bypasses the exe entirely)
+# Bypass the exe entirely — works the same:
 python -m terminus
-
-# Option B: Unblock the exe (run PowerShell as Administrator)
-Unblock-File "$((pip show terminus-game | Select-String Location).ToString().Split()[-1])\..\Scripts\terminus.exe"
-
-# Option C: If your antivirus is blocking it, add an exclusion for
-# the pip Scripts folder shown in the install output.
 ```
 
 ### `ModuleNotFoundError: No module named 'textual'`
 
-**Cause:** Dependencies didn't install into the same Python environment.
-
-**Fix:**
 ```bash
 pip install terminus-game --force-reinstall
 ```
 
 ### Port already in use
 
-**Cause:** Another instance of the game (or another app) is using port 8080.
-
-**Fix:**
 ```bash
-terminus --port 9090  # Use a different port
+terminus --port 9090
 ```
-
-### Game shows "Connection lost" or 401 errors
-
-**Cause:** The server may have restarted or the session expired.
-
-**Fix:** Return to the main menu and rejoin the game. If hosting, restart with `terminus`.
-
-### Players can't connect to my game
-
-**Cause:** Firewall blocking the port, or players are on a different network.
-
-**Fix:**
-- Ensure port 8080 (or your custom port) is open in your firewall
-- For internet play, use `terminus --public` to create a cloudflared tunnel
-- Players must use the exact URL shown in your game (including port)
-
-### Build/upgrade/trade shows an error
-
-**Cause:** Insufficient resources, building already at max level, or market stock depleted.
-
-**Fix:** These are gameplay constraints, not bugs. The error message tells you exactly what's wrong:
-- `"Insufficient gold (need 150.0)"` — earn more gold via trading or mining
-- `"Building at max level"` — building is already level 3
-- `"Insufficient market stock"` — wait for market to restock
 
 ### Game doesn't display correctly (garbled text)
 
-**Cause:** Terminal doesn't support Unicode or is too small.
+Use **Windows Terminal** (not cmd.exe). Resize to at least 120×30 characters.
 
-**Fix:**
-- Use **Windows Terminal** (not cmd.exe) on Windows
-- Resize terminal to at least 120×30 characters
-- Ensure your terminal supports Unicode (UTF-8 encoding)
+### Players can't connect
 
-### `cloudflared` not found for `--public` mode
+- Ensure port 8080 is open in your firewall
+- For internet play, use `terminus --public`
+- Players need the exact URL shown in your lobby (including port)
 
-**Cause:** cloudflared is not installed.
+### LLM benchmark — model always returns PASS
 
-**Fix:** Download from [Cloudflare Downloads](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/) and add to PATH. The game works without it (LAN only).
+Common causes:
+1. **API key not set** — check with `terminus --benchmark config.json --verbose` and look for `401 Unauthorized`
+2. **Windows env var not propagating** — use `run_benchmark.py` (sets key in Python, not shell)
+3. **Model choosing PASS strategically** — valid behaviour; check the HTML report for reasoning factors
 
 ---
 
