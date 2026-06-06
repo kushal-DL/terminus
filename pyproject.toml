@@ -52,9 +52,6 @@ dev = [
     "pytest>=7.0",
     "pytest-asyncio>=0.21",
 ]
-build = [
-    "pyinstaller>=6.0",
-]
 audio = [
     "simpleaudio>=1.0,<2.0",
 ]
