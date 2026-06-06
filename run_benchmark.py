@@ -1,7 +1,7 @@
 """Run Terminus LLM benchmark — sets API key inline to avoid Windows env var propagation issues.
 
 Usage:
-    python run_benchmark.py benchmark-single-test.json
+    python run_benchmark.py benchmark-config.example.json
     python run_benchmark.py my-config.json --verbose
 """
 
@@ -9,11 +9,10 @@ import os
 import sys
 
 # ── Set your API key here ──────────────────────────────────────────────────────
-os.environ["NVIDIA_API_KEY"] = "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"
-
-# Any other keys you want to test against:
-# os.environ["OPENAI_API_KEY"] = "sk-..."
+# os.environ["OPENAI_API_KEY"]    = "sk-..."
 # os.environ["ANTHROPIC_API_KEY"] = "sk-ant-..."
+# os.environ["NVIDIA_API_KEY"]    = "nvapi-..."
+# os.environ["GOOGLE_API_KEY"]    = "..."
 # ──────────────────────────────────────────────────────────────────────────────
 
 if len(sys.argv) < 2:

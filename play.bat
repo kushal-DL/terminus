@@ -1,10 +1,10 @@
 @echo off
 setlocal enabledelayedexpansion
 
-title Terminus — Setting up...
+title Terminus - Setting up...
 echo.
 echo  ==============================================
-echo   TERMINUS — The Last Stand Begins Here
+echo   TERMINUS - The Last Stand Begins Here
 echo  ==============================================
 echo.
 

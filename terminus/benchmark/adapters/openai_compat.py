@@ -91,7 +91,7 @@ class OpenAICompatAdapter(LLMAdapter):
         payload: dict = {
             "model": self.config.model,
             "messages": messages,
-            "max_tokens": 1024 if self.config.extra_body else 500,
+            "max_tokens": 1024 if self.config.extra_body else 800,
             "temperature": 0.3,
         }
         # Use JSON mode for models that support it

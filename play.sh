@@ -3,7 +3,7 @@ set -e
 
 echo ""
 echo " =============================================="
-echo "  TERMINUS — The Last Stand Begins Here"
+echo "  TERMINUS - The Last Stand Begins Here"
 echo " =============================================="
 echo ""
 
