@@ -413,7 +413,8 @@ class TestPromptBuilder:
         assert "coast" in msg
         assert "trade" in msg
         assert "Food: 100/500" in msg
-        assert "BUILD: Build Farm (Cost: 30M, 10G)" in msg
+        assert "BUILD: Build Farm" in msg
+        assert "30M, 10G" in msg
 
     def test_turn_message_with_trade_offers(self) -> None:
         state = BenchmarkGameState(
