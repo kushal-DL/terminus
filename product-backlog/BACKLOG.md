@@ -3,7 +3,7 @@
 > **Product**: Terminus — Multiplayer CLI Survival Strategy Game  
 > **Stack**: Python 3.14 | Textual (TUI) | FastAPI + WebSocket | SQLite | Cloudflared  
 > **Target**: 40-60 min games, up to 250 players, `pip install .` + `python -m terminus`  
-> **Last Updated**: 2026-06-05
+> **Last Updated**: 2026-06-06 (scoring fairness: participation + monotony penalty)
 
 ---
 
@@ -704,7 +704,7 @@
 | ✅ | 12.4.9 | Tier 2 Dimension 5: Justified Pivot vs Inconsistency | `terminus/benchmark/dimensions/pivot.py` |
 | ✅ | 12.4.10 | Tier 2 Dimension 6: Graceful Degradation | `terminus/benchmark/dimensions/degradation.py` |
 | ✅ | 12.4.11 | Tier 2 Dimension 7: Opportunity Cost Awareness | `terminus/benchmark/dimensions/opportunity.py` |
-| ✅ | 12.4.12 | Composite scorer — 9 weight presets | `terminus/benchmark/dimensions/composite.py` |
+| ✅ | 12.4.12 | Composite scorer — 9 weight presets + participation floor + monotony penalty | `terminus/benchmark/dimensions/composite.py`; Option B (participation weight 1.5×) + Option C (monotony penalty) added 2026-06-06 |
 | ✅ | 12.4.13 | Trend analysis | `terminus/benchmark/dimensions/trend.py` |
 | ✅ | 12.4.14 | LLM archetype classification | `terminus/benchmark/dimensions/archetypes.py`; 8 archetypes |
 

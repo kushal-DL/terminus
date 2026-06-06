@@ -1949,7 +1949,33 @@ class MetricsEngine:
 
 **Goal:** Compute 8 cognitive dimension scores from Tier-1 `MetricResult` outputs. Each dimension aggregates multiple Tier-1 metrics into a single `DimensionScore` (0.0–1.0) with sub-scores and diagnostic details. Additionally: a composite scorer with 9 weight presets, trend analysis, and archetype classification.
 
-**Status:** COMPLETE (64 tests)
+**Status:** COMPLETE (64 tests) — scoring fairness improvements added 2026-06-06
+
+**Scoring fairness update (2026-06-06) — Option B + C:**
+
+*Problem identified from live LLM testing:* A model that PASSes every turn (never builds, never allocates workers) was scoring 2nd in composite because it was 100% valid, 100% coherent (consistent PASS = "consistent strategy"), and never hit arithmetic errors. This is Goodhart's Law — optimising the metric rather than playing the game.
+
+*Option B — Game Score Participation* (`composite.py`, `results.py`):
+- `compute_participation_score(recordings, reference_score)` = model avg score ÷ best score in run, clamped [0,1]
+- Weighted at **1.5×** (= 1.5 × a normal dimension weight) in `compute_composite()`
+- `BenchmarkResult.from_recordings()` computes `reference_score` as the best avg score across all models and passes it to the scorer
+- Effect: all-PASS model (score 809 vs best 5654) gets participation 0.14, dragging composite down despite high cognitive scores
+
+*Option C — Monotony Penalty* (`opportunity.py`):
+- `_pass_penalty(pass_rate)`: non-linear — PASS < 30% of turns barely penalised; > 70% scores near 0
+- `_monotony_penalty(dominant_rate, dominant_action)`: any single action > 60% of turns applies a penalty to diversity_score; > 80% effectively zeros it
+- Catches both all-PASS (passivity) and all-BUILD-fail (fixation) failure modes
+- `DimensionScore.details` now exposes `dominant_action`, `dominant_action_rate`, `monotony_penalty` for transparency
+
+*Observed impact on 5-model benchmark run:*
+
+| Model | Old composite | New composite | Δ |
+|-------|--------------|--------------|---|
+| Gemma-4-31B (active, score=5654) | 0.566 | **0.634** | +0.069 |
+| Nemotron-Ultra (83% valid) | 0.532 | **0.583** | +0.051 |
+| Step-3.7-Flash (all PASS) | 0.617 | **0.542** | -0.075 |
+| MiniMax-M2 (50% valid) | 0.590 | **0.523** | -0.066 |
+| Ising-35B (5% valid, BUILD fixation) | 0.503 | **0.449** | -0.054 |
 
 **Input:** `dict[str, MetricResult]` from `MetricsEngine.compute_all()`
 **Output:** `DimensionReport` containing 8 `DimensionScore` objects + composite + trend + archetype

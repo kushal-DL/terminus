@@ -123,6 +123,13 @@ BenchmarkResult → export (JSON/HTML/CSV/Markdown)
 | 6 | CLI & TUI Integration | **COMPLETE** (TUI wired, real scores, `--benchmark` CLI headless + `--benchmark` → TUI setup, export buttons) |
 | 7 | Testing & Verification — full integration, headless end-to-end | **COMPLETE** (17 integration tests; 594 total passing) |
 
+### Scoring fairness (implemented 2026-06-06)
+
+Two fixes applied after live LLM testing revealed that a passive all-PASS model was scoring 2nd in composite:
+
+- **Option B — Participation score** (`composite.py`): `model_avg_score / best_score_in_run` weighted at 1.5× in composite. A model that never acts gets participation ~0.14 which drags its composite down.
+- **Option C — Monotony penalty** (`opportunity.py`): Non-linear PASS penalty (>70% PASS → near 0); dominant-action penalty if any single action >60% of turns. Catches both passivity and BUILD-fixation.
+
 ### What's left
 
 The LLM benchmark feature is complete. Optional quality-of-life items only:
